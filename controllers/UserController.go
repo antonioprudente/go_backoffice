@@ -1,11 +1,15 @@
 package controllers
 
 import (
+	"errors"
+	"net/http"
+	"strconv"
+
 	"example/go_backoffice/models"
 	"example/go_backoffice/services"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type UserController struct {
@@ -27,9 +31,18 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 
 func (c *UserController) GetUserByID(ctx *gin.Context) {
 	id := ctx.Param("id")
+	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID non valido"})
+		return
+	}
+
 	user, err := c.service.GetUserByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero dell'utente"})
 		return
 	}
 	ctx.JSON(http.StatusOK, user)
@@ -52,6 +65,11 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 
 func (c *UserController) DeleteUser(ctx *gin.Context) {
 	id := ctx.Param("id")
+	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID non valido"})
+		return
+	}
+
 	if err := c.service.DeleteUser(id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Impossibile eliminare l'utente"})
 		return

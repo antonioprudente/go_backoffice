@@ -15,6 +15,7 @@ func main() {
 
 	// 3. Setup Router
 	router := gin.Default()
+	router.Use(config.CORS())
 
 	router.GET("/users", userController.GetUsers)
 	router.GET("/users/:id", userController.GetUserByID)

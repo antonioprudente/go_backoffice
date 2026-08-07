@@ -4,7 +4,7 @@ import (
 	"example/go_backoffice/models"
 	"example/go_backoffice/repositories"
 
-	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService interface {
@@ -31,10 +31,12 @@ func (s *userService) GetUserByID(id string) (*models.User, error) {
 }
 
 func (s *userService) CreateUser(user *models.User) error {
-	// Genera automaticamente un UUID per la stringa ID
-	user.ID = uuid.New().String()
+	hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	user.Password = string(hashed)
 
-	// Qui è possibile inserire l'hashing della password prima del salvataggio
 	return s.repo.Create(user)
 }
 

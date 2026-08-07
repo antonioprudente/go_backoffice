@@ -1,6 +1,9 @@
 package repositories
 
 import (
+	"fmt"
+	"strconv"
+
 	"example/go_backoffice/models"
 
 	"gorm.io/gorm"
@@ -28,9 +31,13 @@ func (r *userRepo) GetAll() ([]models.User, error) {
 }
 
 func (r *userRepo) GetByID(id string) (*models.User, error) {
-	var user models.User
-	err := r.db.First(&user, "id = ?", id).Error
+	uid, err := parseID(id)
 	if err != nil {
+		return nil, err
+	}
+
+	var user models.User
+	if err := r.db.First(&user, uid).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -41,5 +48,19 @@ func (r *userRepo) Create(user *models.User) error {
 }
 
 func (r *userRepo) Delete(id string) error {
-	return r.db.Delete(&models.User{}, "id = ?", id).Error
+	uid, err := parseID(id)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(&models.User{}, uid).Error
+}
+
+// parseID converte l'ID ricevuto come stringa (dal parametro URL) in uint,
+// così da poterlo usare nelle query contro la colonna ID (uint, gorm.Model).
+func parseID(id string) (uint, error) {
+	parsed, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("id non valido: %w", err)
+	}
+	return uint(parsed), nil
 }
