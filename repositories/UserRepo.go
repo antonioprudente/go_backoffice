@@ -13,6 +13,7 @@ type UserRepo interface {
 	GetAll() ([]models.User, error)
 	GetByID(id string) (*models.User, error)
 	Create(user *models.User) error
+	UpdateStatus(id uint, status string) (*models.User, error)
 	Delete(id string) error
 }
 
@@ -47,6 +48,18 @@ func (r *userRepo) Create(user *models.User) error {
 	return r.db.Create(user).Error
 }
 
+// Implementazione
+func (r *userRepo) UpdateStatus(id uint, status string) (*models.User, error) {
+	if err := r.db.Model(&models.User{}).Where("id = ?", id).Update("status", status).Error; err != nil {
+		return nil, err
+	}
+	var updatedUser models.User
+	if err := r.db.First(&updatedUser, id).Error; err != nil {
+		return nil, err
+	}
+	return &updatedUser, nil
+}
+
 func (r *userRepo) Delete(id string) error {
 	uid, err := parseID(id)
 	if err != nil {
@@ -55,8 +68,6 @@ func (r *userRepo) Delete(id string) error {
 	return r.db.Delete(&models.User{}, uid).Error
 }
 
-// parseID converte l'ID ricevuto come stringa (dal parametro URL) in uint,
-// così da poterlo usare nelle query contro la colonna ID (uint, gorm.Model).
 func parseID(id string) (uint, error) {
 	parsed, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {

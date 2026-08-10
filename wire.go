@@ -16,6 +16,7 @@ import (
 func InitUserController(db *gorm.DB) *controllers.UserController {
 	wire.Build(
 		repositories.NewUserRepository,
+		repositories.NewAgentNodeRepository,
 		services.NewUserService,
 		controllers.NewUserController,
 	)

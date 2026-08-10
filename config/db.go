@@ -40,8 +40,14 @@ func ConnectDB() *gorm.DB {
 		log.Fatalf("Errore durante la connessione al DB: %v", err)
 	}
 
-	// Creazione/Aggiornamento automatico della tabella "users"
-	err = db.AutoMigrate(&models.User{})
+	// Creazione/Aggiornamento automatico delle tabelle.
+	// User va migrato insieme (o prima) agli altri due, perché AgentNode e
+	// AgentOperator hanno FK verso User.
+	err = db.AutoMigrate(
+		&models.User{},
+		&models.AgentNode{},
+		&models.AgentOperator{},
+	)
 	if err != nil {
 		log.Fatalf("Errore durante la migrazione del DB: %v", err)
 	}

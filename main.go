@@ -7,20 +7,28 @@ import (
 )
 
 func main() {
-	// 1. Inizializzazione DB
+	// Inizializzazione DB
 	db := config.ConnectDB()
 
-	// 2. Iniezione automatica tramite la funzione generata da Wire
+	// Iniezione controllers automatica tramite la funzione generata da Wire
 	userController := InitUserController(db)
 
-	// 3. Setup Router
+	// Setup Router
 	router := gin.Default()
 	router.Use(config.CORS())
 
-	router.GET("/users", userController.GetUsers)
-	router.GET("/users/:id", userController.GetUserByID)
-	router.POST("/users", userController.CreateUser)
-	router.DELETE("/users/:id", userController.DeleteUser)
+	users := router.Group("/users")
+	{
+		users.GET("", userController.GetUsers)    // GET /users
+		users.POST("", userController.CreateUser) // POST /users
+
+		users.GET("/:id", userController.GetUserByID)   // GET /users/:id
+		users.DELETE("/:id", userController.DeleteUser) // DELETE /users/:id
+
+		users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
+		users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
+		users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
+	}
 
 	router.Run("localhost:9090")
 }
