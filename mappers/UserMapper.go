@@ -8,16 +8,22 @@ import (
 )
 
 // ToUserModel converte una UserRequest nel model da persistere
+// ToUserModel converte una UserRequest nel model da persistere
 func ToUserModel(req *user.UserRequest) *models.User {
-	return &models.User{
+	model := &models.User{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Username:  req.Username,
-		Role:      enums.Role(req.Role),
 		Status:    enums.StatusActive,
 		Email:     req.Email,
 		Password:  req.Password,
 	}
+
+	if req.ForeignId != nil {
+		model.ForeignId = req.ForeignId
+	}
+
+	return model
 }
 
 // ToUserResponse converte un model nella response da esporre

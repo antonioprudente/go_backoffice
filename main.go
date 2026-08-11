@@ -12,6 +12,7 @@ func main() {
 
 	// Iniezione controllers automatica tramite la funzione generata da Wire
 	userController := InitUserController(db)
+	agentController := InitAgentController(db)
 
 	// Setup Router
 	router := gin.Default()
@@ -28,6 +29,11 @@ func main() {
 		users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
 		users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
 		users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
+	}
+
+	agents := router.Group("/agents")
+	{
+		agents.POST("", agentController.CreateAgentNode) // POST /agents
 	}
 
 	router.Run("localhost:9090")

@@ -1,2 +1,3 @@
 # Credenziali locali: non versionare mai il file .env reale
 .env
+.wire_gen.go

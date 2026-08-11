@@ -7,7 +7,6 @@ import (
 
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
-	"example/go_backoffice/mappers"
 	"example/go_backoffice/services"
 
 	"github.com/gin-gonic/gin"
@@ -44,17 +43,20 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli utenti"})
 		return
 	}
-	ctx.JSON(http.StatusOK, mappers.ToUserResponses(users))
+	ctx.JSON(http.StatusOK, users)
 }
 
 func (c *UserController) GetUserByID(ctx *gin.Context) {
 	id := ctx.Param("id")
-	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+
+	uid64, err := strconv.ParseUint(id, 10, 0)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID non valido"})
 		return
 	}
 
-	response, err := c.service.GetUserByID(id)
+	uid := uint(uid64)
+	response, err := c.service.GetUserByID(uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})

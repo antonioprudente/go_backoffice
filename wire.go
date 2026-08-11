@@ -16,9 +16,20 @@ import (
 func InitUserController(db *gorm.DB) *controllers.UserController {
 	wire.Build(
 		repositories.NewUserRepository,
-		repositories.NewAgentNodeRepository,
 		services.NewUserService,
 		controllers.NewUserController,
+	)
+	return nil
+}
+
+// InitAgentNodeController dichiara la catena di dipendenze
+func InitAgentController(db *gorm.DB) *controllers.AgentController {
+	wire.Build(
+		repositories.NewAgentNodeRepository,
+		repositories.NewUserRepository,
+		services.NewAgentNodeService,
+		services.NewUserService,
+		controllers.NewAgentController,
 	)
 	return nil
 }

@@ -18,8 +18,17 @@ import (
 // InitUserController dichiara la catena di dipendenze
 func InitUserController(db *gorm.DB) *controllers.UserController {
 	userRepo := repositories.NewUserRepository(db)
-	agentNodeRepo := repositories.NewAgentNodeRepository(db)
-	userService := services.NewUserService(userRepo, agentNodeRepo)
+	userService := services.NewUserService(userRepo)
 	userController := controllers.NewUserController(userService)
 	return userController
+}
+
+// InitAgentNodeController dichiara la catena di dipendenze
+func InitAgentController(db *gorm.DB) *controllers.AgentController {
+	userRepo := repositories.NewUserRepository(db)
+	userService := services.NewUserService(userRepo)
+	agentNodeRepo := repositories.NewAgentNodeRepository(db)
+	agentNodeService := services.NewAgentNodeService(agentNodeRepo, userService)
+	agentController := controllers.NewAgentController(userService, agentNodeService)
+	return agentController
 }

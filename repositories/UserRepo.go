@@ -11,7 +11,7 @@ import (
 
 type UserRepo interface {
 	GetAll() ([]models.User, error)
-	GetByID(id string) (*models.User, error)
+	GetByID(id uint) (*models.User, error)
 	Create(user *models.User) error
 	UpdateStatus(id uint, status string) (*models.User, error)
 	Delete(id string) error
@@ -31,14 +31,9 @@ func (r *userRepo) GetAll() ([]models.User, error) {
 	return users, err
 }
 
-func (r *userRepo) GetByID(id string) (*models.User, error) {
-	uid, err := parseID(id)
-	if err != nil {
-		return nil, err
-	}
-
+func (r *userRepo) GetByID(id uint) (*models.User, error) {
 	var user models.User
-	if err := r.db.First(&user, uid).Error; err != nil {
+	if err := r.db.First(&user, id).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
