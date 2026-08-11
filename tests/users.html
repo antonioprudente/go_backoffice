@@ -43,6 +43,7 @@
         <thead>
             <tr>
                 <th>ID</th>
+                <th>Ruolo</th>
                 <th>Nome</th>
                 <th>Cognome</th>
                 <th>Username</th>
@@ -76,6 +77,7 @@
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${user.id ?? ''}</td>
+                            <td>${user.role ?? ''}</td>
                             <td>${user.first_name ?? ''}</td>
                             <td>${user.last_name ?? ''}</td>
                             <td>${user.username ?? ''}</td>

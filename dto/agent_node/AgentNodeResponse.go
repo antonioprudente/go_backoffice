@@ -3,9 +3,10 @@ package agent_node
 import "example/go_backoffice/dto/user"
 
 type AgentNodeResponse struct {
-	Id     uint               `json:"id"`
-	Lft    uint               `json:"lft"`
-	Rgt    uint               `json:"rgt"`
-	Parent *AgentNodeResponse `json:"parent"`
-	Agent  user.UserResponse  `json:"agent"`
+	Id       uint                 `json:"id"`
+	Lft      uint                 `json:"lft"`
+	Rgt      uint                 `json:"rgt"`
+	Parent   *AgentNodeResponse   `json:"parent"`
+	Agent    user.UserResponse    `json:"agent"`
+	Children []*AgentNodeResponse `json:"children,omitempty"`
 }

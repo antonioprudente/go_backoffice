@@ -8,7 +8,6 @@ import (
 )
 
 // ToUserModel converte una UserRequest nel model da persistere
-// ToUserModel converte una UserRequest nel model da persistere
 func ToUserModel(req *user.UserRequest) *models.User {
 	model := &models.User{
 		FirstName: req.FirstName,
@@ -28,15 +27,28 @@ func ToUserModel(req *user.UserRequest) *models.User {
 
 // ToUserResponse converte un model nella response da esporre
 func ToUserResponse(u *models.User) user.UserResponse {
-	return user.UserResponse{
-		Id:        int(u.ID),
+	// Aggiungi questa protezione per bloccare il crash da puntatore nil
+	if u == nil {
+		return user.UserResponse{}
+	}
+
+	resp := user.UserResponse{
+		Id:        int(u.ID), // Riga 31 che prima andava in crash
 		FirstName: u.FirstName,
 		LastName:  u.LastName,
 		Username:  u.Username,
-		Role:      enums.Role(u.Role),
-		Status:    enums.Status(u.Status),
+		Role:      u.Role,
+		Status:    u.Status,
 		Email:     u.Email,
+		ForeignId: u.ForeignId,
 	}
+
+	if u.Foreign != nil {
+		foreignResp := ToUserResponse(u.Foreign)
+		resp.Foreign = &foreignResp
+	}
+
+	return resp
 }
 
 // ToUserResponses converte uno slice di model, utile per GetAllUsers

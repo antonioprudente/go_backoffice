@@ -35,3 +35,12 @@ func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusCreated, response)
 }
+
+func (c *AgentController) GetAgentsTree(ctx *gin.Context) {
+	agents, err := c.nodeService.GetTrees()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli agenti"})
+		return
+	}
+	ctx.JSON(http.StatusOK, agents)
+}

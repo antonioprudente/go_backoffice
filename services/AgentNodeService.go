@@ -12,6 +12,7 @@ import (
 
 type AgentNodeService interface {
 	CreateNode(request *agent_node.AgentNodeRequest) (*agent_node.AgentNodeResponse, error)
+	GetTrees() ([]*agent_node.AgentNodeResponse, error)
 }
 
 type agentNodeService struct {
@@ -41,4 +42,15 @@ func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest) (*ag
 
 	response := mappers.ToAgentNodeResponse(newNode)
 	return &response, nil
+}
+
+func (s *agentNodeService) GetTrees() ([]*agent_node.AgentNodeResponse, error) {
+	// 1. Recupera l'albero di modelli (slice di puntatori)
+	treeModels, err := s.repo.GetTrees()
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Mappa l'intero albero in un'unica riga pulita
+	return mappers.ToAgentNodePtrResponses(treeModels), nil
 }

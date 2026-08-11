@@ -20,12 +20,10 @@ func main() {
 
 	users := router.Group("/users")
 	{
-		users.GET("", userController.GetUsers)    // GET /users
-		users.POST("", userController.CreateUser) // POST /users
-
-		users.GET("/:id", userController.GetUserByID)   // GET /users/:id
-		users.DELETE("/:id", userController.DeleteUser) // DELETE /users/:id
-
+		users.GET("", userController.GetUsers)                      // GET /users
+		users.POST("", userController.CreateUser)                   // POST /users
+		users.GET("/:id", userController.GetUserByID)               // GET /users/:id
+		users.DELETE("/:id", userController.DeleteUser)             // DELETE /users/:id
 		users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
 		users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
 		users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
@@ -33,7 +31,8 @@ func main() {
 
 	agents := router.Group("/agents")
 	{
-		agents.POST("", agentController.CreateAgentNode) // POST /agents
+		agents.GET("/tree", agentController.GetAgentsTree) // GET /agents/tree
+		agents.POST("", agentController.CreateAgentNode)   // POST /agents
 	}
 
 	router.Run("localhost:9090")

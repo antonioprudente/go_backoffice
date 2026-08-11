@@ -16,16 +16,29 @@ func ToAgentNodeModel(req *agent_node.AgentNodeRequest) *models.AgentNode {
 
 // ToAgentNodeResponse converte un model nella response da esporre
 func ToAgentNodeResponse(u *models.AgentNode) agent_node.AgentNodeResponse {
+	if u == nil {
+		return agent_node.AgentNodeResponse{}
+	}
+
 	resp := agent_node.AgentNodeResponse{
 		Id:    u.ID,
-		Lft:   u.Lft,
-		Rgt:   u.Rgt,
+		Lft:   uint(u.Lft), // Esegue il casting da int a uint
+		Rgt:   uint(u.Rgt), // Esegue il casting da int a uint
 		Agent: ToUserResponse(u.Agent),
 	}
 
 	if u.Parent != nil {
 		parentResp := ToAgentNodeResponse(u.Parent)
 		resp.Parent = &parentResp
+	}
+
+	// Mappatura ricorsiva dei nodi figli (Children)
+	if len(u.Children) > 0 {
+		resp.Children = make([]*agent_node.AgentNodeResponse, len(u.Children))
+		for i, child := range u.Children {
+			childRes := ToAgentNodeResponse(child)
+			resp.Children[i] = &childRes
+		}
 	}
 
 	return resp
@@ -36,6 +49,20 @@ func ToAgentNodeResponses(nodes []models.AgentNode) []agent_node.AgentNodeRespon
 	res := make([]agent_node.AgentNodeResponse, len(nodes))
 	for i, n := range nodes {
 		res[i] = ToAgentNodeResponse(&n)
+	}
+	return res
+}
+
+func ToAgentNodePtrResponses(nodes []*models.AgentNode) []*agent_node.AgentNodeResponse {
+	if nodes == nil {
+		return nil
+	}
+
+	res := make([]*agent_node.AgentNodeResponse, len(nodes))
+	for i, n := range nodes {
+		// Mappiamo direttamente il puntatore passandolo a ToAgentNodeResponse
+		nodeRes := ToAgentNodeResponse(n)
+		res[i] = &nodeRes
 	}
 	return res
 }
