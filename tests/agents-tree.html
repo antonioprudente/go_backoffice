@@ -64,7 +64,15 @@
             width: 12px;
         }
 
-        /* Stile del badge del nodo */
+        /* Wrapper del nodo (badge agente / badge agenzia) */
+        .node-wrapper {
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        /* Stile del badge del nodo agente */
         .node-content {
             display: inline-block;
             padding: 6px 12px;
@@ -97,12 +105,29 @@
             margin-left: 10px;
         }
 
+        /* Nodo "agenzia": è un <li> dell'albero a tutti gli effetti,
+           quindi eredita le linee di connessione come i figli agente
+           e usa la stessa card grafica (.node-content) degli agenti */
+        .node-content.agency-content {
+            cursor: default;
+        }
+
+        .node-content.agency-content:hover {
+            background-color: #fff;
+            color: inherit;
+            border-color: #dcdde1;
+        }
+
+        .role.agency-role {
+            background: #8e44ad;
+        }
+
         /* Classi per l'effetto collassabile via JavaScript */
         .nested.collapsed {
             display: none;
         }
 
-        .has-children>.node-content::border {
+        .has-children>.node-wrapper .node-content::border {
             font-weight: bold;
         }
     </style>
@@ -117,40 +142,77 @@
         // Sostituisci questo URL con l'endpoint reale della tua API Go
         const API_URL = 'http://localhost:9090/agents/tree';
 
-        // Funzione ricorsiva per generare i nodi HTML dell'albero
+        // Markup per un singolo nodo "agenzia": è un <li> a sé stante,
+        // messo allo stesso livello (stesso <ul class="nested">) dei figli agente
+        // e con la stessa card grafica usata per gli agenti
+        function buildAgencyNodeHTML(agency) {
+            return `
+                <li class="agency-node">
+                    <div class="node-wrapper">
+                        <div class="node-content agency-content">
+                            <strong>${agency.first_name} ${agency.last_name}</strong>
+                            <span class="role agency-role">${agency.role}</span>
+                            ${agency.username ? `<span class="indexes">@${agency.username}</span>` : ''}
+                        </div>
+                    </div>
+                </li>
+            `;
+        }
+
+        // Genera il markup completo (<li>...</li>) di un singolo nodo agente,
+        // includendo eventuali agenzie e figli come elementi fratelli nello stesso <ul>
+        function buildNodeLi(node) {
+            const children = node.children || [];
+            const agencies = node.agencies || [];
+            const hasBranches = children.length > 0 || agencies.length > 0;
+            const liClass = hasBranches ? 'has-children' : '';
+
+            let li = `<li class="${liClass}">`;
+            li += `
+                <div class="node-wrapper">
+                    <div class="node-content" onclick="toggleNode(this)">
+                        <strong>${node.agent.first_name} ${node.agent.last_name}</strong>
+                        <span class="role">${node.agent.role}</span>
+                        <span class="indexes">(${node.lft} : ${node.rgt})</span>
+                    </div>
+                </div>
+            `;
+
+            if (hasBranches) {
+                li += '<ul class="nested">';
+                // Le agenzie vengono prima, come nodi allo stesso livello dei children
+                agencies.forEach(agency => {
+                    li += buildAgencyNodeHTML(agency);
+                });
+                // Poi i figli agente, generati ricorsivamente
+                children.forEach(child => {
+                    li += buildNodeLi(child);
+                });
+                li += '</ul>';
+            }
+
+            li += '</li>';
+            return li;
+        }
+
+        // Funzione ricorsiva per generare l'intero albero HTML a partire dalle radici
         function buildTreeHTML(nodes) {
             if (!nodes || nodes.length === 0) return '';
 
             let html = '<ul class="nested">';
             nodes.forEach(node => {
-                const hasChildren = node.children && node.children.length > 0;
-                const liClass = hasChildren ? 'has-children' : '';
-
-                html += `<li class="${liClass}">`;
-                // Genera la card del singolo agente con i dati del JSON
-                html += `
-                    <div class="node-content" onclick="toggleNode(this)">
-                        <strong>${node.agent.first_name} ${node.agent.last_name}</strong> 
-                        <span class="role">${node.agent.role}</span>
-                        <span class="indexes">(${node.lft} : ${node.rgt})</span>
-                    </div>
-                `;
-
-                // Chiamata ricorsiva se l'agente ha dei figli sottostanti
-                if (hasChildren) {
-                    html += buildTreeHTML(node.children);
-                }
-
-                html += '</li>';
+                html += buildNodeLi(node);
             });
             html += '</ul>';
             return html;
         }
 
-        // Funzione per nascondere/mostrare i rami al click
+        // Funzione per nascondere/mostrare i rami (figli + agenzie) al click sul nodo agente
         function toggleNode(element) {
-            const nextUl = element.nextElementSibling;
-            if (nextUl && nextUl.tagName === 'UL') {
+            const wrapper = element.parentElement; // .node-wrapper
+            const li = wrapper.parentElement;       // <li>
+            const nextUl = li.querySelector(':scope > ul.nested');
+            if (nextUl) {
                 nextUl.classList.toggle('collapsed');
             }
         }

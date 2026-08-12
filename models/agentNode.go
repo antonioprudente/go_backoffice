@@ -13,4 +13,5 @@ type AgentNode struct {
 	Agent  *User      `json:"-" gorm:"foreignKey:AgentID"`
 
 	Children []*AgentNode `json:"children" gorm:"-"`
+	Agencies []*User      `json:"agencies" gorm:"-"`
 }

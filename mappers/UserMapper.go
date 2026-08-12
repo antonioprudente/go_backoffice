@@ -13,6 +13,7 @@ func ToUserModel(req *user.UserRequest) *models.User {
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Username:  req.Username,
+		Role:      enums.Role(req.Role),
 		Status:    enums.StatusActive,
 		Email:     req.Email,
 		Password:  req.Password,

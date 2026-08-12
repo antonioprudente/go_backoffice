@@ -10,8 +10,8 @@ import (
 )
 
 type UserRepo interface {
-	GetAll() ([]models.User, error)
-	GetByID(id uint) (*models.User, error)
+	GetAllByRole(role string) ([]models.User, error)
+	GetByIDAndRole(id uint, role string) (*models.User, error)
 	Create(user *models.User) error
 	UpdateStatus(id uint, status string) (*models.User, error)
 	Delete(id string) error
@@ -25,15 +25,15 @@ func NewUserRepository(db *gorm.DB) UserRepo {
 	return &userRepo{db: db}
 }
 
-func (r *userRepo) GetAll() ([]models.User, error) {
+func (r *userRepo) GetAllByRole(role string) ([]models.User, error) {
 	var users []models.User
-	err := r.db.Find(&users).Error
+	err := r.db.Where("role = ?", role).Find(&users).Error
 	return users, err
 }
 
-func (r *userRepo) GetByID(id uint) (*models.User, error) {
+func (r *userRepo) GetByIDAndRole(id uint, role string) (*models.User, error) {
 	var user models.User
-	if err := r.db.First(&user, id).Error; err != nil {
+	if err := r.db.Where("id = ?", id).Where("role = ?", role).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil

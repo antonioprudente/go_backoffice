@@ -3,7 +3,6 @@ package services
 
 import (
 	"example/go_backoffice/dto/agent_node"
-	"example/go_backoffice/enums"
 	"example/go_backoffice/mappers"
 	"example/go_backoffice/repositories"
 
@@ -28,13 +27,15 @@ func NewAgentNodeService(repo repositories.AgentNodeRepo, userService UserServic
 }
 
 func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest) (*agent_node.AgentNodeResponse, error) {
-	hashed, err := bcrypt.GenerateFromPassword([]byte(request.Agent.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
+	if request.Agent != nil {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(request.Agent.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		request.Agent.Password = string(hashed)
 	}
-	request.Agent.Password = string(hashed)
+
 	newNode := mappers.ToAgentNodeModel(request)
-	newNode.Agent.Role = enums.RoleAgent
 
 	if err := s.repo.Create(newNode); err != nil {
 		return nil, err

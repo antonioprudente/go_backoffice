@@ -8,5 +8,6 @@ type AgentNodeResponse struct {
 	Rgt      uint                 `json:"rgt"`
 	Parent   *AgentNodeResponse   `json:"parent"`
 	Agent    user.UserResponse    `json:"agent"`
+	Agencies []user.UserResponse  `json:"agencies,omitempty"`
 	Children []*AgentNodeResponse `json:"children,omitempty"`
 }

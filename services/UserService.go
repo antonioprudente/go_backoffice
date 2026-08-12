@@ -11,8 +11,8 @@ import (
 )
 
 type UserService interface {
-	GetAllUsers() ([]user.UserResponse, error)
-	GetUserByID(id uint) (*user.UserResponse, error)
+	GetAllByRole(role string) ([]user.UserResponse, error)
+	GetUserByIDAndRole(id uint, role string) (*user.UserResponse, error)
 	CreateUser(request *user.UserRequest) (*user.UserResponse, error)
 	ChangeStatus(userID uint, status enums.Status) (*user.UserResponse, error)
 	DeleteUser(id string) error
@@ -27,8 +27,8 @@ func NewUserService(repo repositories.UserRepo) UserService {
 }
 
 // LISTA UTENTI
-func (s *userService) GetAllUsers() ([]user.UserResponse, error) {
-	list, err := s.repo.GetAll()
+func (s *userService) GetAllByRole(role string) ([]user.UserResponse, error) {
+	list, err := s.repo.GetAllByRole(role)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +37,8 @@ func (s *userService) GetAllUsers() ([]user.UserResponse, error) {
 }
 
 // TROVA UTANTE DA ID
-func (s *userService) GetUserByID(id uint) (*user.UserResponse, error) {
-	user, err := s.repo.GetByID(id)
+func (s *userService) GetUserByIDAndRole(id uint, role string) (*user.UserResponse, error) {
+	user, err := s.repo.GetByIDAndRole(id, role)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,6 @@ func (s *userService) CreateUser(request *user.UserRequest) (*user.UserResponse,
 	newUser := mappers.ToUserModel(request) // conversione da request a model
 
 	// salvataggio del model nel db tramite repository
-	newUser.Role = enums.RoleUser
 	if err := s.repo.Create(newUser); err != nil {
 		return nil, err
 	}

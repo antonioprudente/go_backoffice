@@ -2,6 +2,8 @@ package main
 
 import (
 	"example/go_backoffice/config"
+	"example/go_backoffice/enums"
+	"example/go_backoffice/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +22,7 @@ func main() {
 
 	users := router.Group("/users")
 	{
+		users.Use(middlewares.SetRoleMiddleware(enums.RoleUser.String()))
 		users.GET("", userController.GetUsers)                      // GET /users
 		users.POST("", userController.CreateUser)                   // POST /users
 		users.GET("/:id", userController.GetUserByID)               // GET /users/:id
@@ -31,8 +34,17 @@ func main() {
 
 	agents := router.Group("/agents")
 	{
+		agents.Use(middlewares.SetRoleMiddleware(enums.RoleAgent.String()))
 		agents.GET("/tree", agentController.GetAgentsTree) // GET /agents/tree
 		agents.POST("", agentController.CreateAgentNode)   // POST /agents
+		agents.GET("", userController.GetUsers)            // GET /agents
+	}
+	agencies := router.Group("/agencies")
+	{
+		agencies.Use(middlewares.SetRoleMiddleware(enums.RoleAgency.String()))
+		agencies.POST("", userController.CreateUser)
+		agencies.GET("", userController.GetUsers)
+		agencies.GET("/:id", userController.GetUserByID)
 	}
 
 	router.Run("localhost:9090")

@@ -23,22 +23,45 @@ func NewUserController(service services.UserService) *UserController {
 
 func (c *UserController) CreateUser(ctx *gin.Context) {
 	var newUserReq user.UserRequest
+
+	// ottiene il role dal middleware
+	role, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+
+	// assegna il role alla request
+	newUserReq.Role = role.(string)
+
+	// validazione request
 	if err := ctx.ShouldBindJSON(&newUserReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati utente non validi"})
 		return
 	}
 
+	// creazione a db
 	response, err := c.service.CreateUser(&newUserReq)
+
+	// response
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Impossibile creare l'utente"})
 		return
 	}
-
 	ctx.JSON(http.StatusCreated, response)
 }
 
 func (c *UserController) GetUsers(ctx *gin.Context) {
-	users, err := c.service.GetAllUsers()
+
+	// ottiene il role dal middleware
+	role, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+
+	// richiesta al db
+	users, err := c.service.GetAllByRole(role.(string))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli utenti"})
 		return
@@ -47,16 +70,26 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 }
 
 func (c *UserController) GetUserByID(ctx *gin.Context) {
+	// parametro dal path della requst
 	id := ctx.Param("id")
-
 	uid64, err := strconv.ParseUint(id, 10, 0)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID non valido"})
 		return
 	}
-
 	uid := uint(uid64)
-	response, err := c.service.GetUserByID(uid)
+
+	// ottiene il ruolo dal middleware
+	role, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+
+	// request a db
+	response, err := c.service.GetUserByIDAndRole(uid, role.(string))
+
+	// response
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})

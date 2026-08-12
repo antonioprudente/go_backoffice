@@ -22,11 +22,22 @@ func NewAgentController(userService services.UserService, nodeService services.A
 
 func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 	var newAgentNodeReq agent_node.AgentNodeRequest
+
+	// recupera il ruolo
+	role, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+	newAgentNodeReq.Agent.Role = role.(string)
+
+	// validazione campi
 	if err := ctx.ShouldBindJSON(&newAgentNodeReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati utente non validi"})
 		return
 	}
 
+	// creazione a db
 	response, err := c.nodeService.CreateNode(&newAgentNodeReq)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Impossibile creare l'agente"})
