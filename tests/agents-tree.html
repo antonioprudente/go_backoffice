@@ -140,27 +140,24 @@
 
     <script>
         // Sostituisci questo URL con l'endpoint reale della tua API Go
-        const API_URL = 'http://localhost:9090/agents/tree';
+        const API_URL = 'http://localhost:9090/api/agents/tree';
 
-        // Markup per un singolo nodo "agenzia": è un <li> a sé stante,
-        // messo allo stesso livello (stesso <ul class="nested">) dei figli agente
-        // e con la stessa card grafica usata per gli agenti
+        const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODY2MzcxNjksImlhdCI6MTc4NjU1MDc2OSwicm9sZSI6IkFETUlOIiwic3ViIjoxfQ.DXLnuL2LxGglIpejCGoG23QmRVoP3tQj8CgUMoKFeKI';
+
         function buildAgencyNodeHTML(agency) {
             return `
-                <li class="agency-node">
-                    <div class="node-wrapper">
-                        <div class="node-content agency-content">
-                            <strong>${agency.first_name} ${agency.last_name}</strong>
-                            <span class="role agency-role">${agency.role}</span>
-                            ${agency.username ? `<span class="indexes">@${agency.username}</span>` : ''}
-                        </div>
+            <li class="agency-node">
+                <div class="node-wrapper">
+                    <div class="node-content agency-content">
+                        <strong>${agency.first_name} ${agency.last_name}</strong>
+                        <span class="role agency-role">${agency.role}</span>
+                        ${agency.username ? `<span class="indexes">@${agency.username}</span>` : ''}
                     </div>
-                </li>
-            `;
+                </div>
+            </li>
+        `;
         }
 
-        // Genera il markup completo (<li>...</li>) di un singolo nodo agente,
-        // includendo eventuali agenzie e figli come elementi fratelli nello stesso <ul>
         function buildNodeLi(node) {
             const children = node.children || [];
             const agencies = node.agencies || [];
@@ -169,22 +166,20 @@
 
             let li = `<li class="${liClass}">`;
             li += `
-                <div class="node-wrapper">
-                    <div class="node-content" onclick="toggleNode(this)">
-                        <strong>${node.agent.first_name} ${node.agent.last_name}</strong>
-                        <span class="role">${node.agent.role}</span>
-                        <span class="indexes">(${node.lft} : ${node.rgt})</span>
-                    </div>
+            <div class="node-wrapper">
+                <div class="node-content" onclick="toggleNode(this)">
+                    <strong>${node.agent.first_name} ${node.agent.last_name}</strong>
+                    <span class="role">${node.agent.role}</span>
+                    <span class="indexes">(${node.lft} : ${node.rgt})</span>
                 </div>
-            `;
+            </div>
+        `;
 
             if (hasBranches) {
                 li += '<ul class="nested">';
-                // Le agenzie vengono prima, come nodi allo stesso livello dei children
                 agencies.forEach(agency => {
                     li += buildAgencyNodeHTML(agency);
                 });
-                // Poi i figli agente, generati ricorsivamente
                 children.forEach(child => {
                     li += buildNodeLi(child);
                 });
@@ -195,7 +190,6 @@
             return li;
         }
 
-        // Funzione ricorsiva per generare l'intero albero HTML a partire dalle radici
         function buildTreeHTML(nodes) {
             if (!nodes || nodes.length === 0) return '';
 
@@ -207,19 +201,28 @@
             return html;
         }
 
-        // Funzione per nascondere/mostrare i rami (figli + agenzie) al click sul nodo agente
         function toggleNode(element) {
-            const wrapper = element.parentElement; // .node-wrapper
-            const li = wrapper.parentElement;       // <li>
+            const wrapper = element.parentElement;
+            const li = wrapper.parentElement;
             const nextUl = li.querySelector(':scope > ul.nested');
             if (nextUl) {
                 nextUl.classList.toggle('collapsed');
             }
         }
 
-        // Recupero dei dati dall'API Go
-        fetch(API_URL)
+        // --- ESECUZIONE FETCH CON TOKEN HARDCODED ---
+        fetch(API_URL, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                // Inviamo il token impostato manualmente sopra
+                'Authorization': `Bearer ${TOKEN}`
+            }
+        })
             .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error('Non autorizzato. Verifica che il token inserito manualmente sia corretto e non scaduto.');
+                }
                 if (!response.ok) {
                     throw new Error('Errore durante il recupero dei dati');
                 }
@@ -231,13 +234,12 @@
                     container.innerHTML = '<p>Nessun agente presente nel database.</p>';
                     return;
                 }
-                // Avvia la costruzione partendo dalle radici dell'albero
                 container.innerHTML = '<div class="tree">' + buildTreeHTML(data) + '</div>';
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('tree-container').innerHTML =
-                    `<p style="color: red;">Impossibile caricare l'albero: ${error.message}. <br>Verifica che il server Go sia attivo e che i CORS siano abilitati.</p>`;
+                    `<p style="color: red;">Impossibile caricare l'albero: ${error.message}. <br>Verifica che il server Go sia attivo, che i CORS siano abilitati e che il token sia valido.</p>`;
             });
     </script>
 </body>

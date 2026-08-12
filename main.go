@@ -12,39 +12,50 @@ func main() {
 	// Inizializzazione DB
 	db := config.ConnectDB()
 
+	// Crea l'utente ADMIN di default se non esiste già
+	config.SeedAdminUser(db)
 	// Iniezione controllers automatica tramite la funzione generata da Wire
 	userController := InitUserController(db)
 	agentController := InitAgentController(db)
+	authController := InitAuthController(db)
 
 	// Setup Router
 	router := gin.Default()
 	router.Use(config.CORS())
 
-	users := router.Group("/users")
-	{
-		users.Use(middlewares.SetRoleMiddleware(enums.RoleUser.String()))
-		users.GET("", userController.GetUsers)                      // GET /users
-		users.POST("", userController.CreateUser)                   // POST /users
-		users.GET("/:id", userController.GetUserByID)               // GET /users/:id
-		users.DELETE("/:id", userController.DeleteUser)             // DELETE /users/:id
-		users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
-		users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
-		users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
-	}
+	router.POST("/login", authController.Login)
 
-	agents := router.Group("/agents")
+	protected := router.Group("/api")
+	protected.Use(middlewares.AuthRequired())
 	{
+		users := protected.Group("/users")
+		users.Use(middlewares.SetRoleMiddleware(enums.RoleUser.String()))
+		{
+			users.POST("", userController.CreateUser)                   // POST /api/users
+			users.GET("", userController.GetUsers)                      // GET /api/users
+			users.GET("/:id", userController.GetUserByID)               // GET /api/users/:id
+			users.DELETE("/:id", userController.DeleteUser)             // DELETE /api/users/:id
+			users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /api/users/:id/active
+			users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /api/users/:id/suspend
+			users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /api/users/:id/block
+		}
+
+		agents := protected.Group("/agents")
 		agents.Use(middlewares.SetRoleMiddleware(enums.RoleAgent.String()))
-		agents.GET("/tree", agentController.GetAgentsTree) // GET /agents/tree
-		agents.POST("", agentController.CreateAgentNode)   // POST /agents
-		agents.GET("", userController.GetUsers)            // GET /agents
-	}
-	agencies := router.Group("/agencies")
-	{
+		{
+			agents.POST("", agentController.CreateAgentNode)   // POST /api/agents
+			agents.GET("", userController.GetUsers)            // GET /api/agents
+			agents.GET("/:id", userController.GetUserByID)     // GET /api/agents/:id
+			agents.GET("/tree", agentController.GetAgentsTree) // GET /api/agents/tree
+		}
+
+		agencies := protected.Group("/agencies")
 		agencies.Use(middlewares.SetRoleMiddleware(enums.RoleAgency.String()))
-		agencies.POST("", userController.CreateUser)
-		agencies.GET("", userController.GetUsers)
-		agencies.GET("/:id", userController.GetUserByID)
+		{
+			agencies.POST("", userController.CreateUser)     // POST /api/agencies
+			agencies.GET("", userController.GetUsers)        // GET /api/agencies
+			agencies.GET("/:id", userController.GetUserByID) // GET /api/agencies/:id
+		}
 	}
 
 	router.Run("localhost:9090")

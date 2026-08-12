@@ -9,8 +9,8 @@ type AgentNode struct {
 	ParentID *uint `json:"parent_id"`
 	AgentID  uint  `json:"agent_id" gorm:"not null"`
 
-	Parent *AgentNode `json:"-" gorm:"foreignKey:ParentID"`
-	Agent  *User      `json:"-" gorm:"foreignKey:AgentID"`
+	Parent *AgentNode `json:"parent" gorm:"foreignKey:ParentID"`
+	Agent  *User      `json:"agent" gorm:"foreignKey:AgentID"`
 
 	Children []*AgentNode `json:"children" gorm:"-"`
 	Agencies []*User      `json:"agencies" gorm:"-"`

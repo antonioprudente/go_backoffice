@@ -11,6 +11,7 @@ import (
 	"example/go_backoffice/repositories"
 	"example/go_backoffice/services"
 	"gorm.io/gorm"
+	"os"
 )
 
 // Injectors from wire.go:
@@ -31,4 +32,18 @@ func InitAgentController(db *gorm.DB) *controllers.AgentController {
 	agentNodeService := services.NewAgentNodeService(agentNodeRepo, userService)
 	agentController := controllers.NewAgentController(userService, agentNodeService)
 	return agentController
+}
+
+func InitAuthController(db *gorm.DB) *controllers.AuthController {
+	userRepo := repositories.NewUserRepository(db)
+	string2 := provideJWTSecret()
+	authService := services.NewAuthService(userRepo, string2)
+	authController := controllers.NewAuthController(authService)
+	return authController
+}
+
+// wire.go:
+
+func provideJWTSecret() string {
+	return os.Getenv("JWT_SECRET")
 }

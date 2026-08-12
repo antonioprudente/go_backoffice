@@ -16,5 +16,5 @@ type User struct {
 	Email     string       `json:"email" gorm:"unique;not null"`
 	Password  string       `json:"password" gorm:"not null"`
 	ForeignId *uint        `json:"foreign_id" gorm:"index"`
-	Foreign   *User        `json:"-" gorm:"foreignKey:ForeignId"`
+	Foreign   *User        `json:"foreign" gorm:"foreignKey:ForeignId"`
 }

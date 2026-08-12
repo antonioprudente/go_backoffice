@@ -12,6 +12,8 @@ import (
 type UserRepo interface {
 	GetAllByRole(role string) ([]models.User, error)
 	GetByIDAndRole(id uint, role string) (*models.User, error)
+	GetByUsername(username string) (*models.User, error)
+	GetByEmail(email string) (*models.User, error)
 	Create(user *models.User) error
 	UpdateStatus(id uint, status string) (*models.User, error)
 	Delete(id string) error
@@ -34,6 +36,22 @@ func (r *userRepo) GetAllByRole(role string) ([]models.User, error) {
 func (r *userRepo) GetByIDAndRole(id uint, role string) (*models.User, error) {
 	var user models.User
 	if err := r.db.Where("id = ?", id).Where("role = ?", role).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepo) GetByUsername(username string) (*models.User, error) {
+	var user models.User
+	if err := r.db.Where("username = ?", username).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepo) GetByEmail(email string) (*models.User, error) {
+	var user models.User
+	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
