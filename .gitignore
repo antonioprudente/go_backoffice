@@ -1,5 +1,45 @@
-# Credenziali locali: non versionare mai il file .env reale
+# === Credenziali e Variabili d'Ambiente ===
+# Non versionare mai il file .env reale con secrets e credenziali
 .env
-go.mod
-go.sum
-wire_gen.go
+.env.*
+!.env.example
+
+# === Binari ed Eseguibili Compilati ===
+# Ignora gli eseguibili prodotti da `go build`
+*.exe
+*.exe;
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Binario principale se compilato nella root
+go_backoffice
+main
+
+# Cartella di output delle build
+bin/
+dist/
+
+# === File Generati da Google Wire ===
+# Rimuovi il cancelletto sottostante se preferisci generare wire_gen.go localmente
+# wire_gen.go
+
+# === File di Sistema e Editor / IDE ===
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+
+# JetBrains / GoLand
+.idea/
+*.iml
+
+# === Log e Test ===
+*.log
+*.cover
+coverage.txt

@@ -14,7 +14,7 @@ import (
 type UserService interface {
 	GetAllByRole(role string) ([]user.UserResponse, error)
 	GetAllByRoleScoped(role string, actor policies.AuthContext) ([]user.UserResponse, error)
-	GetUserByIDAndRole(id uint, role string) (*user.UserResponse, error)
+	GetUserByIDAndRole(id uint, role string, actor policies.AuthContext) (*user.UserResponse, error)
 	CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	ChangeStatus(userID uint, status enums.Status) (*user.UserResponse, error)
 	DeleteUser(id string) error
@@ -23,6 +23,7 @@ type UserService interface {
 type userService struct {
 	repo         repositories.UserRepo
 	scopeRepo    repositories.ScopeRepo
+	userPolicy   policies.UserPolicy
 	agencyPolicy policies.AgencyPolicy
 	scopePolicy  policies.ScopePolicy
 }
@@ -30,10 +31,17 @@ type userService struct {
 func NewUserService(
 	repo repositories.UserRepo,
 	scopeRepo repositories.ScopeRepo,
+	userPolicy policies.UserPolicy,
 	agencyPolicy policies.AgencyPolicy,
 	scopePolicy policies.ScopePolicy,
 ) UserService {
-	return &userService{repo: repo, scopeRepo: scopeRepo, agencyPolicy: agencyPolicy, scopePolicy: scopePolicy}
+	return &userService{
+		repo:         repo,
+		scopeRepo:    scopeRepo,
+		userPolicy:   userPolicy,
+		agencyPolicy: agencyPolicy,
+		scopePolicy:  scopePolicy,
+	}
 }
 
 func (s *userService) GetAllByRole(role string) ([]user.UserResponse, error) {
@@ -73,13 +81,17 @@ func (s *userService) GetAllByRoleScoped(role string, actor policies.AuthContext
 	return mappers.ToUserResponses(list), nil
 }
 
-func (s *userService) GetUserByIDAndRole(id uint, role string) (*user.UserResponse, error) {
-
-	u, err := s.repo.GetByIDAndRole(id, role)
+func (s *userService) GetUserByIDAndRole(id uint, role string, actor policies.AuthContext) (*user.UserResponse, error) {
+	target, err := s.repo.GetByIDAndRole(id, role)
 	if err != nil {
 		return nil, err
 	}
-	response := mappers.ToUserResponse(u)
+
+	if err := s.userPolicy.CanViewUser(actor, target); err != nil {
+		return nil, err
+	}
+
+	response := mappers.ToUserResponse(target)
 	return &response, nil
 }
 

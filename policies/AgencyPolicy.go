@@ -8,7 +8,6 @@ import (
 )
 
 type AgencyPolicy interface {
-	// CanCreateAgency verifica se actor può creare un'AGENCY collegata a foreignAgentID
 	CanCreateAgency(actor AuthContext, foreignAgentID *uint) error
 }
 
@@ -37,7 +36,7 @@ func (p *agencyPolicy) CanCreateAgency(actor AuthContext, foreignAgentID *uint) 
 			return err
 		}
 		if !allowed {
-			return errors.New("non puoi creare agenzie fuori dalla tua gerarchia")
+			return ErrForbidden
 		}
 		return nil
 

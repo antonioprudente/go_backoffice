@@ -104,8 +104,15 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 		return
 	}
 
+	// recupero actor (utente loggato)
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
 	// request a db
-	response, err := c.service.GetUserByIDAndRole(uid, role.(string))
+	response, err := c.service.GetUserByIDAndRole(uid, role.(string), actor)
 
 	// response
 	if err != nil {
