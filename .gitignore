@@ -1,5 +1,5 @@
 # Credenziali locali: non versionare mai il file .env reale
 .env
+go.mod
+go.sum
 wire_gen.go
-tests
-json
