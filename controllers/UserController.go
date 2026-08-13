@@ -7,6 +7,7 @@ import (
 
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
+	"example/go_backoffice/middlewares"
 	"example/go_backoffice/services"
 
 	"github.com/gin-gonic/gin"
@@ -24,14 +25,12 @@ func NewUserController(service services.UserService) *UserController {
 func (c *UserController) CreateUser(ctx *gin.Context) {
 	var newUserReq user.UserRequest
 
-	// ottiene il role dal middleware
+	// ottiene il targetRole dal middleware (su quale tipo di entità si sta operando)
 	role, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
 		return
 	}
-
-	// assegna il role alla request
 	newUserReq.Role = role.(string)
 
 	// validazione request
@@ -40,28 +39,47 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	// creazione a db
-	response, err := c.service.CreateUser(&newUserReq)
-
-	// response
+	// chi sta chiamando (da JWT, via AuthMiddleware)
+	actor, err := middlewares.ActorFromContext(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Impossibile creare l'utente"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// creazione a db (le policy di autorizzazione fine sono applicate dentro il service)
+	response, err := c.service.CreateUser(&newUserReq, actor)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusCreated, response)
 }
 
 func (c *UserController) GetUsers(ctx *gin.Context) {
-
-	// ottiene il role dal middleware
-	role, exists := ctx.Get("targetRole")
+	// ottiene il targetRole dal middleware
+	roleVal, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
 		return
 	}
+	targetRole := roleVal.(string)
 
-	// richiesta al db
-	users, err := c.service.GetAllByRole(role.(string))
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	var users []user.UserResponse
+
+	// Le liste di AGENT/AGENCY sono soggette a scoping gerarchico (vedi ScopePolicy).
+	// La lista di USER (route /users, riservata ad ADMIN/OPERATOR) resta non filtrata.
+	if enums.Role(targetRole) == enums.RoleAgent || enums.Role(targetRole) == enums.RoleAgency {
+		users, err = c.service.GetAllByRoleScoped(targetRole, actor)
+	} else {
+		users, err = c.service.GetAllByRole(targetRole)
+	}
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli utenti"})
 		return
@@ -70,7 +88,7 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 }
 
 func (c *UserController) GetUserByID(ctx *gin.Context) {
-	// parametro dal path della requst
+	// parametro dal path della request
 	id := ctx.Param("id")
 	uid64, err := strconv.ParseUint(id, 10, 0)
 	if err != nil {
@@ -79,7 +97,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	}
 	uid := uint(uid64)
 
-	// ottiene il ruolo dal middleware
+	// ottiene il targetRole dal middleware
 	role, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})

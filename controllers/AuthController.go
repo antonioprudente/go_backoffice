@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"errors"
 	"net/http"
 
 	"example/go_backoffice/dto/auth"
@@ -25,15 +24,15 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	token, err := c.service.Login(req.Email, req.Password)
+	resp, err := c.service.Login(&req, req.Password)
 	if err != nil {
-		if errors.Is(err, services.ErrInvalidCredentials) {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Credenziali non valide"})
-			return
-		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il login"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, auth.LoginResponse{Token: token})
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func (c *AuthController) Logout(ctx *gin.Context) {
+
 }

@@ -15,6 +15,11 @@ type AgentNodeRepo interface {
 	GetAncestors(id *uint) ([]models.AgentNode, error)
 	GetDescendants(id *uint) ([]models.AgentNode, error)
 	GetTrees() ([]*models.AgentNode, error)
+
+	GetNodeByAgentID(agentID uint) (*models.AgentNode, error)
+	IsDescendantOrSelf(ancestorAgentID uint, nodeID uint) (bool, error)
+	IsAgentDescendantOrSelf(ancestorAgentID, candidateAgentID uint) (bool, error)
+	GetDescendantAgentIDs(ancestorAgentID uint) ([]uint, error)
 }
 
 type agentNodeRepo struct {
@@ -25,6 +30,8 @@ func NewAgentNodeRepository(db *gorm.DB) AgentNodeRepo {
 	return &agentNodeRepo{db: db}
 }
 
+// Creazione dell'agente e assegnazione al nodo di appartenenza
+// Aggiornamento dei campi lft e rgt di tutto l'albero secondo le regole della struttura nested
 func (r *agentNodeRepo) Create(nodeModel *models.AgentNode) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if nodeModel.Agent != nil {
@@ -202,4 +209,65 @@ func (r *agentNodeRepo) GetTrees() ([]*models.AgentNode, error) {
 		}
 	}
 	return roots, nil
+}
+
+// GetNodeByAgentID recupera il nodo dell'albero corrispondente a un dato AgentID (User.ID)
+func (r *agentNodeRepo) GetNodeByAgentID(agentID uint) (*models.AgentNode, error) {
+	var node models.AgentNode
+	if err := r.db.Where("agent_id = ?", agentID).First(&node).Error; err != nil {
+		return nil, err
+	}
+	return &node, nil
+}
+
+// IsDescendantOrSelf verifica se il nodo con ID = nodeID è lo stesso nodo dell'agente
+// ancestorAgentID, oppure un suo discendente nel nested set.
+// Usato per validare il ParentId quando un AGENT crea un nuovo AgentNode.
+func (r *agentNodeRepo) IsDescendantOrSelf(ancestorAgentID uint, nodeID uint) (bool, error) {
+	ancestorNode, err := r.GetNodeByAgentID(ancestorAgentID)
+	if err != nil {
+		return false, err
+	}
+	if ancestorNode.ID == nodeID {
+		return true, nil
+	}
+
+	var count int64
+	err = r.db.Model(&models.AgentNode{}).
+		Where("id = ? AND lft > ? AND rgt < ?", nodeID, ancestorNode.Lft, ancestorNode.Rgt).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// IsAgentDescendantOrSelf come sopra, ma prendendo in input due AgentID (User.ID)
+// invece di un AgentNode.ID. Usato per validare il ForeignId quando un AGENT
+// crea una nuova AGENCY collegata a un agente del proprio sottoalbero.
+func (r *agentNodeRepo) IsAgentDescendantOrSelf(ancestorAgentID, candidateAgentID uint) (bool, error) {
+	if ancestorAgentID == candidateAgentID {
+		return true, nil
+	}
+	ancestorNode, err := r.GetNodeByAgentID(ancestorAgentID)
+	if err != nil {
+		return false, err
+	}
+	candidateNode, err := r.GetNodeByAgentID(candidateAgentID)
+	if err != nil {
+		return false, err
+	}
+	return candidateNode.Lft > ancestorNode.Lft && candidateNode.Rgt < ancestorNode.Rgt, nil
+}
+
+// GetDescendantAgentIDs ritorna gli AgentID (User.ID) di tutti i nodi del sottoalbero
+// dell'agente indicato, incluso se stesso. Utile per filtrare liste (agenti/agenzie visibili).
+func (r *agentNodeRepo) GetDescendantAgentIDs(ancestorAgentID uint) ([]uint, error) {
+	ancestorNode, err := r.GetNodeByAgentID(ancestorAgentID)
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []uint
+	err = r.db.Model(&models.AgentNode{}).
+		Where("(lft > ? AND rgt < ?) OR id = ?", ancestorNode.Lft, ancestorNode.Rgt, ancestorNode.ID).
+		Pluck("agent_id", &ids).Error
+	return ids, err
 }

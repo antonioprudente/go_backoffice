@@ -17,6 +17,9 @@ type UserRepo interface {
 	Create(user *models.User) error
 	UpdateStatus(id uint, status string) (*models.User, error)
 	Delete(id string) error
+
+	GetAllByRoleAndIDs(role string, ids []uint) ([]models.User, error)
+	GetAllByRoleAndForeignIDs(role string, foreignIDs []uint) ([]models.User, error)
 }
 
 type userRepo struct {
@@ -87,4 +90,26 @@ func parseID(id string) (uint, error) {
 		return 0, fmt.Errorf("id non valido: %w", err)
 	}
 	return uint(parsed), nil
+}
+
+// GetAllByRoleAndIDs filtra per ruolo e per un set di ID (usato per OPERATOR->agenti
+// o AGENT->propri sottoagenti)
+func (r *userRepo) GetAllByRoleAndIDs(role string, ids []uint) ([]models.User, error) {
+	var users []models.User
+	if len(ids) == 0 {
+		return users, nil
+	}
+	err := r.db.Where("role = ? AND id IN ?", role, ids).Find(&users).Error
+	return users, err
+}
+
+// GetAllByRoleAndForeignIDs filtra per ruolo (tipicamente AGENCY) e per un set di
+// foreign_id (gli AgentID a cui sono agganciate)
+func (r *userRepo) GetAllByRoleAndForeignIDs(role string, foreignIDs []uint) ([]models.User, error) {
+	var users []models.User
+	if len(foreignIDs) == 0 {
+		return users, nil
+	}
+	err := r.db.Where("role = ? AND foreign_id IN ?", role, foreignIDs).Find(&users).Error
+	return users, err
 }

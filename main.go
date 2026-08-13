@@ -14,6 +14,7 @@ func main() {
 
 	// Crea l'utente ADMIN di default se non esiste già
 	config.SeedAdminUser(db)
+
 	// Iniezione controllers automatica tramite la funzione generata da Wire
 	userController := InitUserController(db)
 	agentController := InitAgentController(db)
@@ -25,36 +26,63 @@ func main() {
 
 	router.POST("/login", authController.Login)
 
-	protected := router.Group("/api")
-	protected.Use(middlewares.AuthRequired())
+	protected := router.Group("")
+
+	protected.Use(middlewares.AuthMiddleware())
 	{
-		users := protected.Group("/users")
-		users.Use(middlewares.SetRoleMiddleware(enums.RoleUser.String()))
+		protected.POST("/logout", authController.Logout) //POST /logout
+
+		// OPERATORS CALLS
+		operators := protected.Group("/operators")
+		operators.Use(
+			middlewares.RequireRoles(enums.RoleAdmin.String()),
+			middlewares.SetRoleMiddleware(enums.RoleOperator.String()),
+		)
 		{
-			users.POST("", userController.CreateUser)                   // POST /api/users
-			users.GET("", userController.GetUsers)                      // GET /api/users
-			users.GET("/:id", userController.GetUserByID)               // GET /api/users/:id
-			users.DELETE("/:id", userController.DeleteUser)             // DELETE /api/users/:id
-			users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /api/users/:id/active
-			users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /api/users/:id/suspend
-			users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /api/users/:id/block
+			operators.POST("", userController.CreateUser) // POST /operators
+			operators.GET("", userController.GetUsers)    // GET /operators
 		}
 
+		// AGENTS CALLS
 		agents := protected.Group("/agents")
-		agents.Use(middlewares.SetRoleMiddleware(enums.RoleAgent.String()))
+		agents.Use(
+			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+			middlewares.SetRoleMiddleware(enums.RoleAgent.String()),
+		)
 		{
-			agents.POST("", agentController.CreateAgentNode)   // POST /api/agents
-			agents.GET("", userController.GetUsers)            // GET /api/agents
-			agents.GET("/:id", userController.GetUserByID)     // GET /api/agents/:id
-			agents.GET("/tree", agentController.GetAgentsTree) // GET /api/agents/tree
+			operators.GET("/:id", userController.GetUserByID)  // GET /operators/:id
+			agents.POST("", agentController.CreateAgentNode)   // POST /agents
+			agents.GET("", userController.GetUsers)            // GET /agents
+			agents.GET("/:id", userController.GetUserByID)     // GET /agents/:id
+			agents.GET("/tree", agentController.GetAgentsTree) // GET /agents/tree
 		}
 
+		// AGENCIES CALLS
 		agencies := protected.Group("/agencies")
-		agencies.Use(middlewares.SetRoleMiddleware(enums.RoleAgency.String()))
+		agencies.Use(
+			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+			middlewares.SetRoleMiddleware(enums.RoleAgency.String()),
+		)
 		{
-			agencies.POST("", userController.CreateUser)     // POST /api/agencies
-			agencies.GET("", userController.GetUsers)        // GET /api/agencies
-			agencies.GET("/:id", userController.GetUserByID) // GET /api/agencies/:id
+			agencies.POST("", userController.CreateUser)     // POST /agencies
+			agencies.GET("", userController.GetUsers)        // GET /agencies
+			agencies.GET("/:id", userController.GetUserByID) // GET /agencies/:id
+		}
+
+		// USERS CALLS
+		users := protected.Group("/users")
+		users.Use(
+			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+			middlewares.SetRoleMiddleware(enums.RoleUser.String()),
+		)
+		{
+			users.POST("", userController.CreateUser)                   // POST /users
+			users.GET("", userController.GetUsers)                      // GET /users
+			users.GET("/:id", userController.GetUserByID)               // GET /users/:id
+			users.DELETE("/:id", userController.DeleteUser)             // DELETE /users/:id
+			users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
+			users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
+			users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
 		}
 	}
 

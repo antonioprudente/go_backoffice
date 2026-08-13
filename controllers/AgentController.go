@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"example/go_backoffice/dto/agent_node"
-	"example/go_backoffice/dto/user"
+	"example/go_backoffice/middlewares"
 	"example/go_backoffice/services"
 	"net/http"
 
@@ -20,50 +20,10 @@ func NewAgentController(userService services.UserService, nodeService services.A
 		nodeService: nodeService,
 	}
 }
+
 func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 	var newAgentNodeReq agent_node.AgentNodeRequest
 
-	// 1. Bind del JSON inviato nella request
-	if err := ctx.ShouldBindJSON(&newAgentNodeReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati non validi"})
-		return
-	}
-
-	// 2. Recupero del ruolo impostato dal middleware
-	role, exists := ctx.Get("targetRole")
-	if !exists {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato"})
-		return
-	}
-
-	roleStr, ok := role.(string)
-	if !ok {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Formato ruolo non valido"})
-		return
-	}
-
-	// 3. Verifica ed inizializzazione del puntatore Agent
-	if newAgentNodeReq.Agent == nil {
-		newAgentNodeReq.Agent = &user.UserRequest{} // Usa user.UserRequest
-	}
-
-	// 4. Assegnazione del ruolo
-	newAgentNodeReq.Agent.Role = roleStr
-
-	// 5. Chiamata al Service
-	response, err := c.nodeService.CreateNode(&newAgentNodeReq)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante la creazione"})
-		return
-	}
-
-	ctx.JSON(http.StatusCreated, response)
-}
-
-/*func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
-	var newAgentNodeReq agent_node.AgentNodeRequest
-
-	// recupera il ruolo
 	role, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
@@ -71,24 +31,34 @@ func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 	}
 	newAgentNodeReq.Agent.Role = role.(string)
 
-	// validazione campi
 	if err := ctx.ShouldBindJSON(&newAgentNodeReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati utente non validi"})
 		return
 	}
 
-	// creazione a db
-	response, err := c.nodeService.CreateNode(&newAgentNodeReq)
+	actor, err := middlewares.ActorFromContext(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Impossibile creare l'agente"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.nodeService.CreateNode(&newAgentNodeReq, actor)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
 
 	ctx.JSON(http.StatusCreated, response)
-}*/
+}
 
 func (c *AgentController) GetAgentsTree(ctx *gin.Context) {
-	agents, err := c.nodeService.GetTrees()
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	agents, err := c.nodeService.GetTrees(actor)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli agenti"})
 		return

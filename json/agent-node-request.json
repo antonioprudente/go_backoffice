@@ -1,0 +1,11 @@
+{
+    "parent_id": 1,
+    "agent": {
+        "first_name": "Pino",
+        "last_name": "Verdi",
+        "username": "pinoverdi01",
+        "email": "pinoverdi01@example.it",
+        "password": "1234",
+        "foreign_id": 2
+    }
+}

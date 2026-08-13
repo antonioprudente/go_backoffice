@@ -2,46 +2,44 @@ package services
 
 import (
 	"errors"
-	"time"
 
+	"example/go_backoffice/config"
+	"example/go_backoffice/dto/auth"
+	"example/go_backoffice/mappers"
 	"example/go_backoffice/repositories"
 
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrInvalidCredentials = errors.New("credenziali non valide")
-
 type AuthService interface {
-	Login(email string, password string) (string, error)
+	Login(req *auth.LoginRequest, plainPassword string) (*auth.LoginResponse, error)
 }
 
 type authService struct {
-	repo      repositories.UserRepo
-	jwtSecret []byte
+	repo repositories.UserRepo
 }
 
-func NewAuthService(repo repositories.UserRepo, jwtSecret string) AuthService {
-	return &authService{repo: repo, jwtSecret: []byte(jwtSecret)}
+func NewAuthService(repo repositories.UserRepo) AuthService {
+	return &authService{repo: repo}
 }
 
-func (s *authService) Login(email string, password string) (string, error) {
-	user, err := s.repo.GetByEmail(email)
+func (s *authService) Login(req *auth.LoginRequest, plainPassword string) (*auth.LoginResponse, error) {
+	u, err := s.repo.GetByEmail(req.Email)
 	if err != nil {
-		return "", ErrInvalidCredentials
+		return nil, errors.New("credenziali non valide")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return "", ErrInvalidCredentials
+	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(plainPassword)); err != nil {
+		return nil, errors.New("credenziali non valide")
 	}
 
-	claims := jwt.MapClaims{
-		"sub":  user.ID,
-		"role": user.Role,
-		"exp":  time.Now().Add(24 * time.Hour).Unix(),
-		"iat":  time.Now().Unix(),
+	token, err := config.GenerateToken(u.ID, string(u.Role))
+	if err != nil {
+		return nil, err
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.jwtSecret)
+	return &auth.LoginResponse{
+		Token: token,
+		User:  mappers.ToUserResponse(u),
+	}, nil
 }

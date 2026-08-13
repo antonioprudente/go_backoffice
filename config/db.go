@@ -47,6 +47,7 @@ func ConnectDB() *gorm.DB {
 		&models.User{},
 		&models.AgentNode{},
 		&models.AgentOperator{},
+		&models.AgencyOperator{},
 	)
 	if err != nil {
 		log.Fatalf("Errore durante la migrazione del DB: %v", err)

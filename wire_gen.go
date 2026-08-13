@@ -8,42 +8,41 @@ package main
 
 import (
 	"example/go_backoffice/controllers"
+	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 	"example/go_backoffice/services"
 	"gorm.io/gorm"
-	"os"
 )
 
 // Injectors from wire.go:
 
-// InitUserController dichiara la catena di dipendenze
 func InitUserController(db *gorm.DB) *controllers.UserController {
 	userRepo := repositories.NewUserRepository(db)
-	userService := services.NewUserService(userRepo)
+	scopeRepo := repositories.NewScopeRepository(db)
+	agentNodeRepo := repositories.NewAgentNodeRepository(db)
+	agencyPolicy := policies.NewAgencyPolicy(agentNodeRepo)
+	scopePolicy := policies.NewScopePolicy(scopeRepo, agentNodeRepo)
+	userService := services.NewUserService(userRepo, scopeRepo, agencyPolicy, scopePolicy)
 	userController := controllers.NewUserController(userService)
 	return userController
 }
 
-// InitAgentNodeController dichiara la catena di dipendenze
 func InitAgentController(db *gorm.DB) *controllers.AgentController {
 	userRepo := repositories.NewUserRepository(db)
-	userService := services.NewUserService(userRepo)
+	scopeRepo := repositories.NewScopeRepository(db)
 	agentNodeRepo := repositories.NewAgentNodeRepository(db)
-	agentNodeService := services.NewAgentNodeService(agentNodeRepo, userService)
+	agencyPolicy := policies.NewAgencyPolicy(agentNodeRepo)
+	scopePolicy := policies.NewScopePolicy(scopeRepo, agentNodeRepo)
+	userService := services.NewUserService(userRepo, scopeRepo, agencyPolicy, scopePolicy)
+	agentPolicy := policies.NewAgentPolicy(agentNodeRepo)
+	agentNodeService := services.NewAgentNodeService(agentNodeRepo, scopeRepo, agentPolicy, scopePolicy)
 	agentController := controllers.NewAgentController(userService, agentNodeService)
 	return agentController
 }
 
 func InitAuthController(db *gorm.DB) *controllers.AuthController {
 	userRepo := repositories.NewUserRepository(db)
-	string2 := provideJWTSecret()
-	authService := services.NewAuthService(userRepo, string2)
+	authService := services.NewAuthService(userRepo)
 	authController := controllers.NewAuthController(authService)
 	return authController
-}
-
-// wire.go:
-
-func provideJWTSecret() string {
-	return os.Getenv("JWT_SECRET")
 }
