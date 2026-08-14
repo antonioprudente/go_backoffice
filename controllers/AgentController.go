@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"example/go_backoffice/dto/agent_node"
-	"example/go_backoffice/middlewares"
 	"example/go_backoffice/services"
 	"net/http"
 
@@ -36,13 +35,7 @@ func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 		return
 	}
 
-	actor, err := middlewares.ActorFromContext(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
-	}
-
-	response, err := c.nodeService.CreateNode(&newAgentNodeReq, actor)
+	response, err := c.nodeService.CreateNode(&newAgentNodeReq)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
@@ -52,13 +45,7 @@ func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 }
 
 func (c *AgentController) GetAgentsTree(ctx *gin.Context) {
-	actor, err := middlewares.ActorFromContext(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
-	}
-
-	agents, err := c.nodeService.GetTrees(actor)
+	agents, err := c.nodeService.GetTrees()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli agenti"})
 		return

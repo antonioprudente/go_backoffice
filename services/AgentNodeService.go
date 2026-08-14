@@ -4,43 +4,32 @@ import (
 	"example/go_backoffice/dto/agent_node"
 	"example/go_backoffice/mappers"
 	"example/go_backoffice/models"
-	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AgentNodeService interface {
-	CreateNode(request *agent_node.AgentNodeRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error)
-	GetTrees(actor policies.AuthContext) ([]*agent_node.AgentNodeResponse, error)
+	CreateNode(request *agent_node.AgentNodeRequest) (*agent_node.AgentNodeResponse, error)
+	GetTrees() ([]*agent_node.AgentNodeResponse, error)
 }
 
 type agentNodeService struct {
-	repo        repositories.AgentNodeRepo
-	scopeRepo   repositories.ScopeRepo
-	agentPolicy policies.AgentPolicy
-	scopePolicy policies.ScopePolicy
+	repo      repositories.AgentNodeRepo
+	scopeRepo repositories.ScopeRepo
 }
 
 func NewAgentNodeService(
 	repo repositories.AgentNodeRepo,
 	scopeRepo repositories.ScopeRepo,
-	agentPolicy policies.AgentPolicy,
-	scopePolicy policies.ScopePolicy,
 ) AgentNodeService {
 	return &agentNodeService{
-		repo:        repo,
-		scopeRepo:   scopeRepo,
-		agentPolicy: agentPolicy,
-		scopePolicy: scopePolicy,
+		repo:      repo,
+		scopeRepo: scopeRepo,
 	}
 }
 
-func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error) {
-	if err := s.agentPolicy.CanCreateAgent(actor, request.ParentId); err != nil {
-		return nil, err
-	}
-
+func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest) (*agent_node.AgentNodeResponse, error) {
 	if request.Agent != nil {
 		hashed, err := bcrypt.GenerateFromPassword([]byte(request.Agent.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -54,33 +43,19 @@ func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest, acto
 		return nil, err
 	}
 
-	if actor.Role == "OPERATOR" {
-		if err := s.scopeRepo.AssignAgentToOperator(actor.UserID, newNode.AgentID); err != nil {
-			return nil, err
-		}
-	}
-
 	response := mappers.ToAgentNodeResponse(newNode)
 	return &response, nil
 }
 
-func (s *agentNodeService) GetTrees(actor policies.AuthContext) ([]*agent_node.AgentNodeResponse, error) {
+func (s *agentNodeService) GetTrees() ([]*agent_node.AgentNodeResponse, error) {
+	// 1. Recupera l'albero di modelli (slice di puntatori)
 	treeModels, err := s.repo.GetTrees()
 	if err != nil {
 		return nil, err
 	}
 
-	scope, err := s.scopePolicy.AgentScope(actor)
-	if err != nil {
-		return nil, err
-	}
-	if scope.Unrestricted {
-		return mappers.ToAgentNodePtrResponses(treeModels), nil
-	}
-
-	allowed := toSet(scope.IDs)
-	pruned := filterRootsByAgentID(treeModels, allowed)
-	return mappers.ToAgentNodePtrResponses(pruned), nil
+	// 2. Mappa l'intero albero in un'unica riga pulita
+	return mappers.ToAgentNodePtrResponses(treeModels), nil
 }
 
 func toSet(ids []uint) map[uint]bool {

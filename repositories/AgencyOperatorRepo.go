@@ -38,3 +38,14 @@ func (r *agencyOperatorRepo) AssignAgenciesMassive(agencyOperator []models.Agenc
 
 	return agencyOperator, nil
 }
+
+func (r *agentOperatorRepo) GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (models.AgencyOperator, error) {
+	var agencyOperator models.AgencyOperator
+
+	err := r.db.Where("operator_id = ? AND agent_id = ?", operatorID, agencyID).First(&agencyOperator).Error
+	if err != nil {
+		return models.AgencyOperator{}, err
+	}
+
+	return agencyOperator, nil
+}

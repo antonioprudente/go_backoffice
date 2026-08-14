@@ -24,8 +24,8 @@ func NewUserController(service services.UserService) *UserController {
 
 func (c *UserController) CreateUser(ctx *gin.Context) {
 	var newUserReq user.UserRequest
-
 	// ottiene il targetRole dal middleware (su quale tipo di entità si sta operando)
+
 	role, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
@@ -39,15 +39,8 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	// chi sta chiamando (da JWT, via AuthMiddleware)
-	actor, err := middlewares.ActorFromContext(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
-	}
-
 	// creazione a db (le policy di autorizzazione fine sono applicate dentro il service)
-	response, err := c.service.CreateUser(&newUserReq, actor)
+	response, err := c.service.CreateUser(&newUserReq)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
@@ -64,21 +57,9 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 	}
 	targetRole := roleVal.(string)
 
-	actor, err := middlewares.ActorFromContext(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
-	}
-
 	var users []user.UserResponse
 
-	// Le liste di AGENT/AGENCY sono soggette a scoping gerarchico (vedi ScopePolicy).
-	// La lista di USER (route /users, riservata ad ADMIN/OPERATOR) resta non filtrata.
-	if enums.Role(targetRole) == enums.RoleAgent || enums.Role(targetRole) == enums.RoleAgency {
-		users, err = c.service.GetAllByRoleScoped(targetRole, actor)
-	} else {
-		users, err = c.service.GetAllByRole(targetRole)
-	}
+	users, err := c.service.GetAllByRole(targetRole)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli utenti"})
@@ -98,7 +79,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	uid := uint(uid64)
 
 	// ottiene il targetRole dal middleware
-	role, exists := ctx.Get("targetRole")
+	targetRole, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
 		return
@@ -112,7 +93,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	}
 
 	// request a db
-	response, err := c.service.GetUserByIDAndRole(uid, role.(string), actor)
+	response, err := c.service.GetUserByIDAndRole(uid, targetRole.(string), actor)
 
 	// response
 	if err != nil {

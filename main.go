@@ -19,6 +19,8 @@ func main() {
 	userController := InitUserController(db)
 	agentController := InitAgentController(db)
 	authController := InitAuthController(db)
+	agencyOperatorController := InitAgencyOperatorController(db)
+	agentOperatorController := InitAgentOperatorController(db)
 
 	// Setup Router
 	router := gin.Default()
@@ -32,8 +34,9 @@ func main() {
 	{
 		protected.POST("/logout", authController.Logout) //POST /logout
 
-		// OPERATORS CALLS
+		// OPERATORS + PIVOT CALLS
 		operators := protected.Group("/operators")
+		pivot := protected.Group("/operator")
 		operators.Use(
 			middlewares.RequireRoles(enums.RoleAdmin.String()),
 			middlewares.SetRoleMiddleware(enums.RoleOperator.String()),
@@ -41,6 +44,11 @@ func main() {
 		{
 			operators.POST("", userController.CreateUser) // POST /operators
 			operators.GET("", userController.GetUsers)    // GET /operators
+
+			pivot.POST("/to/agency", agencyOperatorController.AssignAgencyToOperator) // POST /operator/to/agency
+			pivot.POST("/to/agent", agentOperatorController.AssignAgentToOperator)    // POST /operator/to/agent
+			pivot.POST("/to/agencies")                                                // POST /operator/to/agencies
+			pivot.POST("/to/agents")                                                  // POST /operator/to/agents
 		}
 
 		// AGENTS CALLS

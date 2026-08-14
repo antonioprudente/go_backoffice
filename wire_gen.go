@@ -8,7 +8,6 @@ package main
 
 import (
 	"example/go_backoffice/controllers"
-	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 	"example/go_backoffice/services"
 	"gorm.io/gorm"
@@ -19,11 +18,7 @@ import (
 func InitUserController(db *gorm.DB) *controllers.UserController {
 	userRepo := repositories.NewUserRepository(db)
 	scopeRepo := repositories.NewScopeRepository(db)
-	agentNodeRepo := repositories.NewAgentNodeRepository(db)
-	userPolicy := policies.NewUserPolicy(agentNodeRepo, scopeRepo, userRepo)
-	agencyPolicy := policies.NewAgencyPolicy(agentNodeRepo)
-	scopePolicy := policies.NewScopePolicy(scopeRepo, agentNodeRepo)
-	userService := services.NewUserService(userRepo, scopeRepo, userPolicy, agencyPolicy, scopePolicy)
+	userService := services.NewUserService(userRepo, scopeRepo)
 	userController := controllers.NewUserController(userService)
 	return userController
 }
@@ -31,13 +26,9 @@ func InitUserController(db *gorm.DB) *controllers.UserController {
 func InitAgentController(db *gorm.DB) *controllers.AgentController {
 	userRepo := repositories.NewUserRepository(db)
 	scopeRepo := repositories.NewScopeRepository(db)
+	userService := services.NewUserService(userRepo, scopeRepo)
 	agentNodeRepo := repositories.NewAgentNodeRepository(db)
-	userPolicy := policies.NewUserPolicy(agentNodeRepo, scopeRepo, userRepo)
-	agencyPolicy := policies.NewAgencyPolicy(agentNodeRepo)
-	scopePolicy := policies.NewScopePolicy(scopeRepo, agentNodeRepo)
-	userService := services.NewUserService(userRepo, scopeRepo, userPolicy, agencyPolicy, scopePolicy)
-	agentPolicy := policies.NewAgentPolicy(agentNodeRepo)
-	agentNodeService := services.NewAgentNodeService(agentNodeRepo, scopeRepo, agentPolicy, scopePolicy)
+	agentNodeService := services.NewAgentNodeService(agentNodeRepo, scopeRepo)
 	agentController := controllers.NewAgentController(userService, agentNodeService)
 	return agentController
 }
@@ -47,4 +38,20 @@ func InitAuthController(db *gorm.DB) *controllers.AuthController {
 	authService := services.NewAuthService(userRepo)
 	authController := controllers.NewAuthController(authService)
 	return authController
+}
+
+func InitAgentOperatorController(db *gorm.DB) *controllers.AgentOperatorController {
+	agentOperatorRepo := repositories.NewAgentOperatorRepository(db)
+	userRepo := repositories.NewUserRepository(db)
+	agentOperatorService := services.NewAgentOperatorService(agentOperatorRepo, userRepo)
+	agentOperatorController := controllers.NewAgentOperatorController(agentOperatorService)
+	return agentOperatorController
+}
+
+func InitAgencyOperatorController(db *gorm.DB) *controllers.AgencyOperatorController {
+	agencyOperatorRepo := repositories.NewAgencyOperatorRepository(db)
+	userRepo := repositories.NewUserRepository(db)
+	agencyOperatorService := services.NewAgencyOperatorService(agencyOperatorRepo, userRepo)
+	agencyOperatorController := controllers.NewAgencyOperatorController(agencyOperatorService)
+	return agencyOperatorController
 }

@@ -10,17 +10,25 @@ import (
 )
 
 type AgentOperatorService interface {
+	AssignAgentToOperator(request *pivot.AssignToOpRequest, actor policies.AuthContext) (*pivot.AssignToOpResponse, error)
 }
 
 type agentOperatorService struct {
-	repo repositories.AgentOperatorRepo
+	repo     repositories.AgentOperatorRepo
+	userRepo repositories.UserRepo
 }
 
-func NewAgentOperatorService(repo repositories.AgentOperatorRepo) AgentOperatorService {
-	return &agentOperatorService{repo: repo}
+func NewAgentOperatorService(
+	repo repositories.AgentOperatorRepo,
+	userRepo repositories.UserRepo,
+) AgentOperatorService {
+	return &agentOperatorService{
+		repo:     repo,
+		userRepo: userRepo,
+	}
 }
 
-func (s *agentOperatorService) Create(request *pivot.AssignToOpRequest, actor policies.AuthContext) (*pivot.AssignToOpResponse, error) {
+func (s *agentOperatorService) AssignAgentToOperator(request *pivot.AssignToOpRequest, actor policies.AuthContext) (*pivot.AssignToOpResponse, error) {
 	if actor.Role != enums.RoleAdmin.String() {
 		return nil, errors.New("unauthorized: solo gli amministratori possono eseguire questa operazione")
 	}
@@ -29,15 +37,24 @@ func (s *agentOperatorService) Create(request *pivot.AssignToOpRequest, actor po
 		return nil, errors.New("request payload non valido")
 	}
 
+	_, err := s.userRepo.GetByIDAndRole(*request.AgentId, enums.RoleAgent.String())
+	if err != nil {
+		return nil, errors.New("L'utente selezionato non è un agente")
+	}
+
+	_, err = s.userRepo.GetByIDAndRole(request.OperatorId, enums.RoleOperator.String())
+	if err != nil {
+		return nil, errors.New("L'utente selezionato non è un operatore")
+	}
+
 	model := mappers.ToAgentOperatorModel(request)
 
-	newPivot, err := s.repo.AssignAgent(model)
+	newPivot, err := s.repo.CreateAgentOperator(model)
 	if err != nil {
 		return nil, err
 	}
 
 	response := mappers.ToAgentOperatorResponse(newPivot)
-
 	return response, nil
 
 }
