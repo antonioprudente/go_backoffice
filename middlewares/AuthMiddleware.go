@@ -14,14 +14,14 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token mancante"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Middleware: Token mancante"})
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := config.ParseToken(tokenString)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token non valido o scaduto"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Middleware: Token non valido o scaduto"})
 			return
 		}
 

@@ -8,6 +8,7 @@ package main
 
 import (
 	"example/go_backoffice/controllers"
+	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 	"example/go_backoffice/services"
 	"gorm.io/gorm"
@@ -18,7 +19,8 @@ import (
 func InitUserController(db *gorm.DB) *controllers.UserController {
 	userRepo := repositories.NewUserRepository(db)
 	scopeRepo := repositories.NewScopeRepository(db)
-	userService := services.NewUserService(userRepo, scopeRepo)
+	userPolicy := policies.NewUserPolicy(scopeRepo, userRepo)
+	userService := services.NewUserService(userRepo, scopeRepo, userPolicy)
 	userController := controllers.NewUserController(userService)
 	return userController
 }
@@ -26,9 +28,10 @@ func InitUserController(db *gorm.DB) *controllers.UserController {
 func InitAgentController(db *gorm.DB) *controllers.AgentController {
 	userRepo := repositories.NewUserRepository(db)
 	scopeRepo := repositories.NewScopeRepository(db)
-	userService := services.NewUserService(userRepo, scopeRepo)
+	userPolicy := policies.NewUserPolicy(scopeRepo, userRepo)
+	userService := services.NewUserService(userRepo, scopeRepo, userPolicy)
 	agentNodeRepo := repositories.NewAgentNodeRepository(db)
-	agentNodeService := services.NewAgentNodeService(agentNodeRepo, scopeRepo)
+	agentNodeService := services.NewAgentNodeService(agentNodeRepo, scopeRepo, userPolicy)
 	agentController := controllers.NewAgentController(userService, agentNodeService)
 	return agentController
 }

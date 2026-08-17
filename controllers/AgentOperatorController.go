@@ -19,7 +19,7 @@ func NewAgentOperatorController(service services.AgentOperatorService) *AgentOpe
 }
 
 func (c *AgentOperatorController) AssignAgentToOperator(ctx *gin.Context) {
-	agentIdStr := ctx.Param("agencyId")
+	agentIdStr := ctx.Param("agentId")
 	uid64, err := strconv.ParseUint(agentIdStr, 10, 0)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID agenzia non valido"})

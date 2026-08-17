@@ -5,6 +5,7 @@ package main
 
 import (
 	"example/go_backoffice/controllers"
+	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 	"example/go_backoffice/services"
 
@@ -16,6 +17,7 @@ func InitUserController(db *gorm.DB) *controllers.UserController {
 	wire.Build(
 		repositories.NewUserRepository,
 		repositories.NewScopeRepository,
+		policies.NewUserPolicy,
 		services.NewUserService,
 		controllers.NewUserController,
 	)
@@ -27,6 +29,7 @@ func InitAgentController(db *gorm.DB) *controllers.AgentController {
 		repositories.NewAgentNodeRepository,
 		repositories.NewUserRepository,
 		repositories.NewScopeRepository,
+		policies.NewUserPolicy,
 		services.NewAgentNodeService,
 		services.NewUserService,
 		controllers.NewAgentController,

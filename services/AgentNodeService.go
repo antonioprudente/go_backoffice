@@ -4,32 +4,36 @@ import (
 	"example/go_backoffice/dto/agent_node"
 	"example/go_backoffice/mappers"
 	"example/go_backoffice/models"
+	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AgentNodeService interface {
-	CreateNode(request *agent_node.AgentNodeRequest) (*agent_node.AgentNodeResponse, error)
+	CreateNode(request *agent_node.AgentNodeRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error)
 	GetTrees() ([]*agent_node.AgentNodeResponse, error)
 }
 
 type agentNodeService struct {
 	repo      repositories.AgentNodeRepo
 	scopeRepo repositories.ScopeRepo
+	policy    policies.UserPolicy
 }
 
 func NewAgentNodeService(
 	repo repositories.AgentNodeRepo,
 	scopeRepo repositories.ScopeRepo,
+	policy policies.UserPolicy,
 ) AgentNodeService {
 	return &agentNodeService{
 		repo:      repo,
 		scopeRepo: scopeRepo,
+		policy:    policy,
 	}
 }
 
-func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest) (*agent_node.AgentNodeResponse, error) {
+func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error) {
 	if request.Agent != nil {
 		hashed, err := bcrypt.GenerateFromPassword([]byte(request.Agent.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -39,6 +43,10 @@ func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest) (*ag
 	}
 
 	newNode := mappers.ToAgentNodeModel(request)
+	if err := s.policy.Create(actor, newNode.Agent); err != nil {
+		return nil, err
+	}
+
 	if err := s.repo.Create(newNode); err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"example/go_backoffice/dto/agent_node"
+	"example/go_backoffice/middlewares"
 	"example/go_backoffice/services"
 	"net/http"
 
@@ -23,19 +24,41 @@ func NewAgentController(userService services.UserService, nodeService services.A
 func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 	var newAgentNodeReq agent_node.AgentNodeRequest
 
-	role, exists := ctx.Get("targetRole")
-	if !exists {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
-		return
-	}
-	newAgentNodeReq.Agent.Role = role.(string)
-
+	// Binding JSON
 	if err := ctx.ShouldBindJSON(&newAgentNodeReq); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati utente non validi"})
 		return
 	}
 
-	response, err := c.nodeService.CreateNode(&newAgentNodeReq)
+	// Recupero targetRole dal contesto
+	role, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+
+	// Verifica che agent sia popolato
+	if newAgentNodeReq.Agent == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Il campo 'agent' è obbligatorio"})
+		return
+	}
+
+	// verifica il formato del ruolo e lo inserisce alla request
+	roleStr, ok := role.(string)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Formato ruolo non valido"})
+		return
+	}
+	newAgentNodeReq.Agent.Role = roleStr
+
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// invocazione del service per il salvataggio
+	response, err := c.nodeService.CreateNode(&newAgentNodeReq, actor)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return

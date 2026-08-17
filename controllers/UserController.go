@@ -8,6 +8,7 @@ import (
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/middlewares"
+	"example/go_backoffice/policies"
 	"example/go_backoffice/services"
 
 	"github.com/gin-gonic/gin"
@@ -39,8 +40,14 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
 	// creazione a db (le policy di autorizzazione fine sono applicate dentro il service)
-	response, err := c.service.CreateUser(&newUserReq)
+	response, err := c.service.CreateUser(&newUserReq, actor)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
@@ -69,7 +76,6 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 }
 
 func (c *UserController) GetUserByID(ctx *gin.Context) {
-	// parametro dal path della request
 	id := ctx.Param("id")
 	uid64, err := strconv.ParseUint(id, 10, 0)
 	if err != nil {
@@ -78,30 +84,30 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	}
 	uid := uint(uid64)
 
-	// ottiene il targetRole dal middleware
 	targetRole, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
 		return
 	}
 
-	// recupero actor (utente loggato)
 	actor, err := middlewares.ActorFromContext(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	// request a db
 	response, err := c.service.GetUserByIDAndRole(uid, targetRole.(string), actor)
-
-	// response
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		switch {
+		case errors.Is(err, gorm.ErrRecordNotFound):
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
-			return
+		case errors.Is(err, policies.ErrForbidden):
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		default:
+			// ErrUnknownRole, ErrMissingRelation, ErrNotImplemented o errori
+			// tecnici veri (query fallita ecc.): questi restano 500
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero dell'utente"})
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero dell'utente"})
 		return
 	}
 	ctx.JSON(http.StatusOK, response)

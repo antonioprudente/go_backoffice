@@ -17,13 +17,13 @@ func RequireRoles(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roleVal, exists := c.Get("userRole")
 		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Utente non autenticato"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Middleware: Utente non autenticato"})
 			return
 		}
 
 		role, ok := roleVal.(string)
 		if !ok || !allowed[role] {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Accesso negato per il tuo ruolo"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Middleware: Non hai i permessi per eseguire questa azione"})
 			return
 		}
 

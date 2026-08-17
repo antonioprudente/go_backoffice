@@ -1,75 +1,45 @@
 package policies
 
 import (
-	"example/go_backoffice/enums"
 	"example/go_backoffice/models"
 	"example/go_backoffice/repositories"
 )
 
 type UserPolicy interface {
-	View(actor AuthContext, target models.User) bool
+	View(actor AuthContext, target *models.User) error
+	Create(actor AuthContext, target *models.User) error
+	Update(actor AuthContext, target *models.User) error
+	Delete(actor AuthContext, target *models.User) error
 }
 
 type userPolicy struct {
-	userRepo     repositories.UserRepo
-	agentOpRepo  repositories.AgentOperatorRepo
-	agencyOpRepo repositories.AgencyOperatorRepo
-	scopeRepo    repositories.ScopeRepo
+	viewPolicy   *ViewPolicy
+	createPolicy *CreatePolicy
+	updatePolicy *UpdatePolicy
+	deletePolicy *DeletePolicy
 }
 
-func NewUserPolicy(
-	userRepo repositories.UserRepo,
-	agentOpRepo repositories.AgentOperatorRepo,
-	agencyOpRepo repositories.AgencyOperatorRepo,
-	scopeRepo repositories.ScopeRepo,
-) UserPolicy {
+func NewUserPolicy(scopeRepo repositories.ScopeRepo, userRepo repositories.UserRepo) UserPolicy {
 	return &userPolicy{
-		userRepo:     userRepo,
-		agentOpRepo:  agentOpRepo,
-		agencyOpRepo: agencyOpRepo,
-		scopeRepo:    scopeRepo,
+		viewPolicy:   NewViewPolicy(scopeRepo, userRepo),
+		createPolicy: NewCreatePolicy(scopeRepo, userRepo),
+		updatePolicy: NewUpdatePolicy(scopeRepo),
+		deletePolicy: NewDeletePolicy(scopeRepo),
 	}
 }
 
-func (p *userPolicy) View(actor AuthContext, target models.User) bool {
-	if actor.UserID == target.ID {
-		return true
-	}
-
-	switch actor.Role {
-	case enums.RoleAdmin.String():
-		return true
-
-	case enums.RoleOperator.String():
-		switch target.Role {
-		case enums.RoleAgent:
-			isAssigned, _ := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, target.ID)
-			return isAssigned
-
-		case enums.RoleAgency:
-			isAssigned, _ := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, target.ID)
-			return isAssigned
-
-		case enums.RoleUser:
-			isAssigned, _ := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, target.Foreign.ID)
-			return isAssigned
-		}
-		return false
-	case enums.RoleAgent.String():
-		switch target.Role {
-		case enums.RoleAgency:
-			return target.ForeignId == &actor.UserID
-
-		case enums.RoleUser:
-			return target.Foreign.ForeignId == &actor.UserID
-		}
-		return false
-	}
-	return false
+func (p *userPolicy) View(actor AuthContext, target *models.User) error {
+	return p.viewPolicy.Check(actor, target)
 }
 
-func Create(actor AuthContext) bool {
-	return false
+func (p *userPolicy) Create(actor AuthContext, target *models.User) error {
+	return p.createPolicy.Check(actor, target)
 }
-func Update()
-func Delete()
+
+func (p *userPolicy) Update(actor AuthContext, target *models.User) error {
+	return p.updatePolicy.Check(actor, target)
+}
+
+func (p *userPolicy) Delete(actor AuthContext, target *models.User) error {
+	return p.deletePolicy.Check(actor, target)
+}

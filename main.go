@@ -45,20 +45,30 @@ func main() {
 			operators.POST("", userController.CreateUser) // POST /operators
 			operators.GET("", userController.GetUsers)    // GET /operators
 
-			pivot.POST("/to/agency", agencyOperatorController.AssignAgencyToOperator) // POST /operator/to/agency
-			pivot.POST("/to/agent", agentOperatorController.AssignAgentToOperator)    // POST /operator/to/agent
-			pivot.POST("/to/agencies")                                                // POST /operator/to/agencies
-			pivot.POST("/to/agents")                                                  // POST /operator/to/agents
+			pivot.POST("/:operatorId/to/agency/:agencyId", agencyOperatorController.AssignAgencyToOperator)
+			pivot.POST("/:operatorId/to/agent/:agentId", agentOperatorController.AssignAgentToOperator)
+			pivot.POST("/to/agencies")
+			pivot.POST("/to/agents")
+		}
+
+		// Rotta dedicata per il get singolo operatore: ADMIN vede chiunque,
+		// OPERATOR può vedere solo se stesso (self-check demandato a UserPolicy.View)
+		operatorSelf := protected.Group("/operators")
+		operatorSelf.Use(
+			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+			middlewares.SetRoleMiddleware(enums.RoleOperator.String()),
+		)
+		{
+			operatorSelf.GET("/:id", userController.GetUserByID) // GET /operators/:id
 		}
 
 		// AGENTS CALLS
 		agents := protected.Group("/agents")
 		agents.Use(
-			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+			middlewares.RequireRoles(enums.RoleOperator.String(), enums.RoleAdmin.String(), enums.RoleAgent.String()),
 			middlewares.SetRoleMiddleware(enums.RoleAgent.String()),
 		)
 		{
-			operators.GET("/:id", userController.GetUserByID)  // GET /operators/:id
 			agents.POST("", agentController.CreateAgentNode)   // POST /agents
 			agents.GET("", userController.GetUsers)            // GET /agents
 			agents.GET("/:id", userController.GetUserByID)     // GET /agents/:id
@@ -68,7 +78,7 @@ func main() {
 		// AGENCIES CALLS
 		agencies := protected.Group("/agencies")
 		agencies.Use(
-			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String(), enums.RoleAgent.String()),
 			middlewares.SetRoleMiddleware(enums.RoleAgency.String()),
 		)
 		{
