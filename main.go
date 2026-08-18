@@ -34,32 +34,41 @@ func main() {
 	{
 		protected.POST("/logout", authController.Logout) //POST /logout
 
-		// OPERATORS + PIVOT CALLS
+		// OPERATORS
 		operators := protected.Group("/operators")
-		pivot := protected.Group("/operator")
-		operators.Use(
-			middlewares.RequireRoles(enums.RoleAdmin.String()),
-			middlewares.SetRoleMiddleware(enums.RoleOperator.String()),
-		)
 		{
-			operators.POST("", userController.CreateUser) // POST /operators
-			operators.GET("", userController.GetUsers)    // GET /operators
+			// Rotte per ADMIN
+			adminOnly := operators.Group("")
+			adminOnly.Use(
+				middlewares.RequireRoles(enums.RoleAdmin.String()),
+				middlewares.SetRoleMiddleware(enums.RoleOperator.String()),
+			)
+			{
+				adminOnly.POST("", userController.CreateUser)
+				adminOnly.GET("", userController.GetUsers)
+			}
 
-			pivot.POST("/:operatorId/to/agency/:agencyId", agencyOperatorController.AssignAgencyToOperator)
-			pivot.POST("/:operatorId/to/agent/:agentId", agentOperatorController.AssignAgentToOperator)
-			pivot.POST("/to/agencies")
-			pivot.POST("/to/agents")
+			// Rotta per ADMIN e OPERATOR (self-check/policy)
+			selfAccess := operators.Group("")
+			selfAccess.Use(
+				middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+				middlewares.SetRoleMiddleware(enums.RoleOperator.String()),
+			)
+			{
+				selfAccess.GET("/:id", userController.GetUserByID)
+			}
 		}
 
-		// Rotta dedicata per il get singolo operatore: ADMIN vede chiunque,
-		// OPERATOR può vedere solo se stesso (self-check demandato a UserPolicy.View)
-		operatorSelf := protected.Group("/operators")
-		operatorSelf.Use(
-			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
-			middlewares.SetRoleMiddleware(enums.RoleOperator.String()),
+		// PIVOT
+		pivot := protected.Group("/operator")
+		pivot.Use(
+			middlewares.RequireRoles(enums.RoleAdmin.String()),
 		)
 		{
-			operatorSelf.GET("/:id", userController.GetUserByID) // GET /operators/:id
+			pivot.POST("/to/agency", agencyOperatorController.AssignAgencyToOperator)
+			pivot.POST("/to/agent", agentOperatorController.AssignAgentToOperator)
+			pivot.POST("/to/agencies", agencyOperatorController.AssignAgenciesToOperator)
+			pivot.POST("/to/agents", agentOperatorController.AssignAgentsToOperator)
 		}
 
 		// AGENTS CALLS

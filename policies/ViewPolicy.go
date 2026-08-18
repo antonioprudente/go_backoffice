@@ -23,7 +23,6 @@ func (p *ViewPolicy) Check(actor AuthContext, target *models.User) error {
 	if actor.UserID == target.ID {
 		return nil
 	}
-
 	switch actor.Role {
 	case enums.RoleAdmin.String():
 		return nil
@@ -105,13 +104,11 @@ func (p *ViewPolicy) viewAsAgent(actor AuthContext, target *models.User) error {
 		if target.ForeignId == nil {
 			return ErrForbidden
 		}
-
-		children, err := p.scopeRepo.ChildrenAgentIds(actor.UserID)
+		children, err := p.scopeRepo.NodeChildrenAgentIds(actor.UserID)
 		if err != nil {
 			return err
 		}
-
-		if !slices.Contains(children, *target.ForeignId) {
+		if actor.UserID != *target.ForeignId && !slices.Contains(children, *target.ForeignId) {
 			return ErrForbidden
 		}
 		return nil
@@ -122,7 +119,7 @@ func (p *ViewPolicy) viewAsAgent(actor AuthContext, target *models.User) error {
 			return err
 		}
 
-		children, err := p.scopeRepo.ChildrenAgentIds(*agency.ForeignId)
+		children, err := p.scopeRepo.NodeChildrenAgentIds(*agency.ForeignId)
 		if err != nil {
 			return err
 		}
@@ -133,5 +130,5 @@ func (p *ViewPolicy) viewAsAgent(actor AuthContext, target *models.User) error {
 		return nil
 	}
 
-	return ErrForbidden
+	return ErrUnknownRole
 }

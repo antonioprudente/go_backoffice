@@ -11,6 +11,7 @@ import (
 
 type AgencyOperatorService interface {
 	AssignAgencyToOperator(request *pivot.AssignToOpRequest, actor policies.AuthContext) (*pivot.AssignToOpResponse, error)
+	AssignAgenciesToOperator(request *pivot.ArraysToOpRequest, actor policies.AuthContext) (*pivot.ArraysToOpResponse, error)
 }
 
 type agencyOperatorService struct {
@@ -29,16 +30,13 @@ func NewAgencyOperatorService(
 }
 
 func (s *agencyOperatorService) AssignAgencyToOperator(request *pivot.AssignToOpRequest, actor policies.AuthContext) (*pivot.AssignToOpResponse, error) {
-	if actor.Role != enums.RoleAdmin.String() {
-		return nil, errors.New("unauthorized: solo gli amministratori possono eseguire questa operazione")
+	if request == nil || request.AgencyId == nil {
+		return nil, errors.New("agency_id mancante nella request")
 	}
 
-	if request == nil {
-		return nil, errors.New("request payload non valido")
-	}
-	_, err := s.userRepo.GetByIDAndRole(*request.AgentId, enums.RoleAgency.String())
+	_, err := s.userRepo.GetByIDAndRole(*request.AgencyId, enums.RoleAgency.String())
 	if err != nil {
-		return nil, errors.New("L'utente selezionato non è un agenzia")
+		return nil, errors.New("L'utente selezionato non è un'agenzia")
 	}
 
 	_, err = s.userRepo.GetByIDAndRole(request.OperatorId, enums.RoleOperator.String())
@@ -53,5 +51,20 @@ func (s *agencyOperatorService) AssignAgencyToOperator(request *pivot.AssignToOp
 	}
 
 	response := mappers.ToAgencyOperatorResponse(newPivot)
+	return response, nil
+}
+
+func (s *agencyOperatorService) AssignAgenciesToOperator(request *pivot.ArraysToOpRequest, actor policies.AuthContext) (*pivot.ArraysToOpResponse, error) {
+	if request == nil {
+		return nil, errors.New("request payload non valido")
+	}
+	model := mappers.ToArrAgencyOperatorModel(request)
+
+	newPivots, err := s.repo.AssignAgenciesMassive(model)
+	if err != nil {
+		return nil, err
+	}
+
+	response := mappers.ToArrAgencyOperatorResponse(newPivots)
 	return response, nil
 }

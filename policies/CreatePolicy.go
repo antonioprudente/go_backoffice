@@ -63,16 +63,11 @@ func (p *CreatePolicy) createAsOperator(actor AuthContext, target *models.User) 
 func (p *CreatePolicy) createAsAgent(actor AuthContext, target *models.User) error {
 	switch target.Role {
 	case enums.RoleAgent, enums.RoleAgency:
-		if target.ForeignId == nil {
-			return ErrForbidden
-		}
-
-		children, err := p.scopeRepo.ChildrenAgentIds(actor.UserID)
+		children, err := p.scopeRepo.NodeChildrenAgentIds(actor.UserID)
 		if err != nil {
 			return err
 		}
-
-		if !slices.Contains(children, *target.ForeignId) {
+		if actor.UserID != *target.ForeignId && !slices.Contains(children, *target.ForeignId) {
 			return ErrForbidden
 		}
 		return nil
@@ -83,7 +78,7 @@ func (p *CreatePolicy) createAsAgent(actor AuthContext, target *models.User) err
 			return err
 		}
 
-		children, err := p.scopeRepo.ChildrenAgentIds(*agency.ForeignId)
+		children, err := p.scopeRepo.NodeChildrenAgentIds(*agency.ForeignId)
 		if err != nil {
 			return err
 		}
@@ -93,5 +88,5 @@ func (p *CreatePolicy) createAsAgent(actor AuthContext, target *models.User) err
 		}
 		return nil
 	}
-	return ErrNotImplemented
+	return ErrUnknownRole
 }

@@ -13,8 +13,8 @@ type ScopeRepo interface {
 	IsAgencyAssignedToOperator(operatorID, agencyID uint) (bool, error)
 	AssignedAgentIDs(operatorID uint) ([]uint, error)
 	AssignedAgencyIDs(operatorID uint) ([]uint, error)
-	ChildrenAgentIds(agentId uint) ([]uint, error)
 	GetAgentIDByNodeID(nodeID uint) (uint, error)
+	NodeChildrenAgentIds(agentID uint) ([]uint, error)
 }
 
 type scopeRepo struct {
@@ -65,49 +65,27 @@ func (r *scopeRepo) AssignedAgencyIDs(operatorID uint) ([]uint, error) {
 	return ids, err
 }
 
-func (r *scopeRepo) ChildrenAgentIds(agentId uint) ([]uint, error) {
-	// Risolve il nodo (AgentNode) associato all'AgentID di partenza
-	var rootNode models.AgentNode
-	if err := r.db.Where("agent_id = ?", agentId).First(&rootNode).Error; err != nil {
-		return nil, err
-	}
-
-	// Includiamo l'agente di partenza
-	ids := []uint{agentId}
-
-	// Attraversamento ricorsivo dell'albero via AgentNode.ID (non via AgentID)
-	var fetchDescendants func(currentNodeID uint) error
-	fetchDescendants = func(currentNodeID uint) error {
-		var children []models.AgentNode
-
-		err := r.db.
-			Where("parent_id = ?", currentNodeID).
-			Find(&children).Error
-		if err != nil {
-			return err
-		}
-
-		for _, child := range children {
-			ids = append(ids, child.AgentID)
-			if err := fetchDescendants(child.ID); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
-	if err := fetchDescendants(rootNode.ID); err != nil {
-		return nil, err
-	}
-
-	return ids, nil
-}
-
 func (r *scopeRepo) GetAgentIDByNodeID(nodeID uint) (uint, error) {
 	var node models.AgentNode
 	if err := r.db.Select("agent_id").First(&node, nodeID).Error; err != nil {
 		return 0, err
 	}
 	return node.AgentID, nil
+}
+
+func (r *scopeRepo) NodeChildrenAgentIds(agentID uint) ([]uint, error) {
+	var node models.AgentNode
+	if err := r.db.Where("agent_id = ?", agentID).First(&node).Error; err != nil {
+		return nil, err
+	}
+
+	var children []uint
+	err := r.db.Model(&models.AgentNode{}).
+		Where("lft > ? AND rgt < ?", node.Lft, node.Rgt).
+		Pluck("agent_id", &children).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return children, nil
 }

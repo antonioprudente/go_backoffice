@@ -6,20 +6,21 @@ import (
 )
 
 func ToAgentOperatorModel(req *pivot.AssignToOpRequest) *models.AgentOperator {
-	model := &models.AgentOperator{
+	if req == nil || req.AgentId == nil {
+		return nil
+	}
+	return &models.AgentOperator{
 		OperatorID: req.OperatorId,
 		AgentID:    *req.AgentId,
 	}
-
-	return model
 }
 
 func ToArrAgentOperatorModel(req *pivot.ArraysToOpRequest) *[]models.AgentOperator {
-	if req == nil {
+	if req == nil || req.AgentIds == nil {
 		return nil
 	}
 
-	arrayModel := make([]models.AgentOperator, len(*req.AgentIds))
+	arrayModel := make([]models.AgentOperator, 0, len(*req.AgentIds))
 
 	for _, agentId := range *req.AgentIds {
 		arrayModel = append(arrayModel, models.AgentOperator{
@@ -36,29 +37,46 @@ func ToAgentOperatorResponse(model *models.AgentOperator) *pivot.AssignToOpRespo
 		return nil
 	}
 
-	res := &pivot.AssignToOpResponse{
-		Operator: ToUserResponse(model.Operator),
-		Agent:    ToUserResponse(model.Agent),
-	}
+	agentID := model.AgentID
 
-	return res
+	return &pivot.AssignToOpResponse{
+		OperatorID: model.OperatorID,
+		AgentID:    &agentID,
+	}
 }
 
-func ToAgencyOperatorModel(req *pivot.AssignToOpRequest) *models.AgencyOperator {
-	model := &models.AgencyOperator{
-		OperatorID: req.OperatorId,
-		AgencyID:   *req.AgencyId,
-	}
-
-	return model
-}
-
-func ToArrAgencyOperatorModel(req *pivot.ArraysToOpRequest) *[]models.AgencyOperator {
-	if req == nil {
+func ToArrAgentOperatorResponse(agentOperators *[]models.AgentOperator) *pivot.ArraysToOpResponse {
+	if agentOperators == nil || len(*agentOperators) == 0 {
 		return nil
 	}
 
-	arrayModel := make([]models.AgencyOperator, len(*req.AgencyIds))
+	agentIds := make([]uint, 0, len(*agentOperators))
+	for _, ao := range *agentOperators {
+		agentIds = append(agentIds, ao.AgentID)
+	}
+
+	return &pivot.ArraysToOpResponse{
+		OperatorId: (*agentOperators)[0].OperatorID,
+		AgentIds:   &agentIds,
+	}
+}
+
+func ToAgencyOperatorModel(req *pivot.AssignToOpRequest) *models.AgencyOperator {
+	if req == nil || req.AgencyId == nil {
+		return nil
+	}
+	return &models.AgencyOperator{
+		OperatorID: req.OperatorId,
+		AgencyID:   *req.AgencyId,
+	}
+}
+
+func ToArrAgencyOperatorModel(req *pivot.ArraysToOpRequest) *[]models.AgencyOperator {
+	if req == nil || req.AgencyIds == nil {
+		return nil
+	}
+
+	arrayModel := make([]models.AgencyOperator, 0, len(*req.AgencyIds))
 
 	for _, agencyId := range *req.AgencyIds {
 		arrayModel = append(arrayModel, models.AgencyOperator{
@@ -75,10 +93,26 @@ func ToAgencyOperatorResponse(model *models.AgencyOperator) *pivot.AssignToOpRes
 		return nil
 	}
 
-	res := &pivot.AssignToOpResponse{
-		Operator: ToUserResponse(model.Operator),
-		Agency:   ToUserResponse(model.Agency),
+	agencyID := model.AgencyID
+
+	return &pivot.AssignToOpResponse{
+		OperatorID: model.OperatorID,
+		AgencyID:   &agencyID,
+	}
+}
+
+func ToArrAgencyOperatorResponse(agencyOperators *[]models.AgencyOperator) *pivot.ArraysToOpResponse {
+	if agencyOperators == nil || len(*agencyOperators) == 0 {
+		return nil
 	}
 
-	return res
+	agencyIds := make([]uint, 0, len(*agencyOperators))
+	for _, ao := range *agencyOperators {
+		agencyIds = append(agencyIds, ao.AgencyID)
+	}
+
+	return &pivot.ArraysToOpResponse{
+		OperatorId: (*agencyOperators)[0].OperatorID,
+		AgencyIds:  &agencyIds,
+	}
 }

@@ -22,10 +22,11 @@ func ToAgentNodeResponse(u *models.AgentNode) agent_node.AgentNodeResponse {
 	}
 
 	resp := agent_node.AgentNodeResponse{
-		Id:    u.ID,
-		Lft:   uint(u.Lft), // Esegue il casting da int a uint
-		Rgt:   uint(u.Rgt), // Esegue il casting da int a uint
-		Agent: ToUserResponse(u.Agent),
+		Id:       u.ID,
+		Lft:      u.Lft,
+		Rgt:      u.Rgt,
+		ParentId: u.ParentID,
+		Agent:    ToUserResponse(u.Agent),
 	}
 
 	// Mappatura delle agenzie associate all'agente (User con ForeignId == AgentID)

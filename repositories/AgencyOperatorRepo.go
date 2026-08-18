@@ -8,7 +8,8 @@ import (
 
 type AgencyOperatorRepo interface {
 	AssignAgency(model *models.AgencyOperator) (*models.AgencyOperator, error)
-	AssignAgenciesMassive(agencyOperator []models.AgencyOperator) ([]models.AgencyOperator, error)
+	AssignAgenciesMassive(agencyOperator *[]models.AgencyOperator) (*[]models.AgencyOperator, error)
+	GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (models.AgencyOperator, error)
 }
 
 type agencyOperatorRepo struct {
@@ -27,19 +28,19 @@ func (r *agencyOperatorRepo) AssignAgency(model *models.AgencyOperator) (*models
 	return model, nil
 }
 
-func (r *agencyOperatorRepo) AssignAgenciesMassive(agencyOperator []models.AgencyOperator) ([]models.AgencyOperator, error) {
-	if len(agencyOperator) == 0 {
+func (r *agencyOperatorRepo) AssignAgenciesMassive(agencyOperator *[]models.AgencyOperator) (*[]models.AgencyOperator, error) {
+	if len(*agencyOperator) == 0 {
 		return nil, nil
 	}
 
-	if err := r.db.Create(&agencyOperator).Error; err != nil {
+	if err := r.db.Create(agencyOperator).Error; err != nil {
 		return nil, err
 	}
 
 	return agencyOperator, nil
 }
 
-func (r *agentOperatorRepo) GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (models.AgencyOperator, error) {
+func (r *agencyOperatorRepo) GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (models.AgencyOperator, error) {
 	var agencyOperator models.AgencyOperator
 
 	err := r.db.Where("operator_id = ? AND agent_id = ?", operatorID, agencyID).First(&agencyOperator).Error

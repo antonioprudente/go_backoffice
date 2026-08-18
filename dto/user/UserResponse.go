@@ -10,6 +10,6 @@ type UserResponse struct {
 	Role      enums.Role    `json:"role"`
 	Status    enums.Status  `json:"status"`
 	Email     string        `json:"email"`
-	ForeignId *uint         `json:"foreign_id"`
-	Foreign   *UserResponse `json:"foreign"`
+	ForeignId *uint         `json:"foreign_id,omitempty"`
+	Foreign   *UserResponse `json:"foreign,omitempty"`
 }

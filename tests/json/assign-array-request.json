@@ -1,0 +1,12 @@
+{
+    "operator_id": 7,
+    "agent_ids": [
+        3,
+        4,
+        8
+    ],
+    "agency_ids": [
+        2,
+        14
+    ]
+}

@@ -42,6 +42,14 @@ func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest, acto
 		request.Agent.Password = string(hashed)
 	}
 
+	if request.Agent.ForeignId != nil {
+		parentId, err := s.repo.GetParentIdByAgentId(*request.Agent.ForeignId)
+		if err != nil {
+			return nil, err
+		}
+		request.ParentId = parentId
+	}
+
 	newNode := mappers.ToAgentNodeModel(request)
 	if err := s.policy.Create(actor, newNode.Agent); err != nil {
 		return nil, err

@@ -5,7 +5,6 @@ import (
 	"example/go_backoffice/middlewares"
 	"example/go_backoffice/services"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,37 +18,44 @@ func NewAgentOperatorController(service services.AgentOperatorService) *AgentOpe
 }
 
 func (c *AgentOperatorController) AssignAgentToOperator(ctx *gin.Context) {
-	agentIdStr := ctx.Param("agentId")
-	uid64, err := strconv.ParseUint(agentIdStr, 10, 0)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID agenzia non valido"})
+	var request pivot.AssignToOpRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati non validi"})
 		return
 	}
-	uAgentId := uint(uid64)
 
-	operatorIdStr := ctx.Param("operatorId")
-	uid64, err = strconv.ParseUint(operatorIdStr, 10, 0)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID operatore non valido"})
-		return
-	}
-	uOperatorId := uint(uid64)
-
-	newAgentOperatorReq := pivot.AssignToOpRequest{
-		AgentId:    &uAgentId,
-		OperatorId: uOperatorId,
-	}
 	actor, err := middlewares.ActorFromContext(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	response, err := c.service.AssignAgentToOperator(&newAgentOperatorReq, actor)
+	response, err := c.service.AssignAgentToOperator(&request, actor)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
 
+	ctx.JSON(http.StatusCreated, response)
+}
+
+func (c *AgentOperatorController) AssignAgentsToOperator(ctx *gin.Context) {
+	var request pivot.ArraysToOpRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati non validi"})
+		return
+	}
+
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.service.AssignAgentsToOperator(&request, actor)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
 	ctx.JSON(http.StatusCreated, response)
 }

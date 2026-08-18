@@ -1,11 +1,7 @@
 package pivot
 
-import (
-	"example/go_backoffice/dto/user"
-)
-
 type AssignToOpResponse struct {
-	Operator user.UserResponse `json:"operator"`
-	Agent    user.UserResponse `json:"agent,omitempty"`
-	Agency   user.UserResponse `json:"agency,omitempty"`
+	OperatorID uint  `json:"operator"`
+	AgentID    *uint `json:"agent,omitempty"`
+	AgencyID   *uint `json:"agency,omitempty"`
 }

@@ -11,6 +11,7 @@ import (
 
 type AgentOperatorService interface {
 	AssignAgentToOperator(request *pivot.AssignToOpRequest, actor policies.AuthContext) (*pivot.AssignToOpResponse, error)
+	AssignAgentsToOperator(request *pivot.ArraysToOpRequest, actor policies.AuthContext) (*pivot.ArraysToOpResponse, error)
 }
 
 type agentOperatorService struct {
@@ -49,7 +50,7 @@ func (s *agentOperatorService) AssignAgentToOperator(request *pivot.AssignToOpRe
 
 	model := mappers.ToAgentOperatorModel(request)
 
-	newPivot, err := s.repo.CreateAgentOperator(model)
+	newPivot, err := s.repo.AssignAgent(model)
 	if err != nil {
 		return nil, err
 	}
@@ -57,4 +58,19 @@ func (s *agentOperatorService) AssignAgentToOperator(request *pivot.AssignToOpRe
 	response := mappers.ToAgentOperatorResponse(newPivot)
 	return response, nil
 
+}
+
+func (s *agentOperatorService) AssignAgentsToOperator(request *pivot.ArraysToOpRequest, actor policies.AuthContext) (*pivot.ArraysToOpResponse, error) {
+	if request == nil {
+		return nil, errors.New("request payload non valido")
+	}
+	model := mappers.ToArrAgentOperatorModel(request)
+
+	newPivots, err := s.repo.AssignAgentsMassive(model)
+	if err != nil {
+		return nil, err
+	}
+
+	response := mappers.ToArrAgentOperatorResponse(newPivots)
+	return response, nil
 }

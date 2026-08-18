@@ -5,7 +5,6 @@ import (
 	"example/go_backoffice/middlewares"
 	"example/go_backoffice/services"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,25 +18,10 @@ func NewAgencyOperatorController(service services.AgencyOperatorService) *Agency
 }
 
 func (c *AgencyOperatorController) AssignAgencyToOperator(ctx *gin.Context) {
-	agencyIdStr := ctx.Param("agencyId")
-	uid64, err := strconv.ParseUint(agencyIdStr, 10, 0)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID agenzia non valido"})
+	var request pivot.AssignToOpRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati non validi"})
 		return
-	}
-	uAgencyId := uint(uid64)
-
-	operatorIdStr := ctx.Param("operatorId")
-	uid64, err = strconv.ParseUint(operatorIdStr, 10, 0)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID operatore non valido"})
-		return
-	}
-	uOperatorId := uint(uid64)
-
-	newAgencyOperatorReq := pivot.AssignToOpRequest{
-		AgencyId:   &uAgencyId,
-		OperatorId: uOperatorId,
 	}
 
 	actor, err := middlewares.ActorFromContext(ctx)
@@ -46,11 +30,32 @@ func (c *AgencyOperatorController) AssignAgencyToOperator(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.service.AssignAgencyToOperator(&newAgencyOperatorReq, actor)
+	response, err := c.service.AssignAgencyToOperator(&request, actor)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
 
+	ctx.JSON(http.StatusCreated, response)
+}
+
+func (c *AgencyOperatorController) AssignAgenciesToOperator(ctx *gin.Context) {
+	var request pivot.ArraysToOpRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati non validi"})
+		return
+	}
+
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.service.AssignAgenciesToOperator(&request, actor)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
 	ctx.JSON(http.StatusCreated, response)
 }
