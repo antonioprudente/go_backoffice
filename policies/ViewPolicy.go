@@ -39,10 +39,6 @@ func (p *ViewPolicy) Check(actor AuthContext, target *models.User) error {
 		}
 		return ErrForbidden
 	}
-
-	// Ruolo dell'actor non riconosciuto: non è un denial di business, ma un
-	// caso che la policy non dovrebbe mai incontrare (es. enum esteso senza
-	// aggiornare qui).
 	return ErrUnknownRole
 }
 
@@ -54,9 +50,6 @@ func (p *ViewPolicy) viewAsOperator(actor AuthContext, target *models.User) erro
 			return err
 		}
 		if !assigned {
-			// Nessuna riga nella pivot agent_operator: l'agente non è
-			// assegnato a questo operatore. Non è un errore tecnico:
-			// è la risposta di business "non sei autorizzato a vederlo".
 			return ErrForbidden
 		}
 		return nil
@@ -73,18 +66,9 @@ func (p *ViewPolicy) viewAsOperator(actor AuthContext, target *models.User) erro
 
 	case enums.RoleUser:
 		if target.ForeignId == nil {
-			// Lo USER non è agganciato a nessuna agenzia: non c'è nulla da
-			// verificare nella pivot, ma questo è un denial legittimo di
-			// business, non un problema tecnico.
-			return ErrForbidden
-		}
-		if target.Foreign == nil {
-			// ForeignId è valorizzato ma la relazione non è stata risolta:
-			// preload mancante o FK orfana (integrità dati). Qui sì è un
-			// problema tecnico, distinto dal caso sopra.
 			return ErrMissingRelation
 		}
-		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, target.Foreign.ID)
+		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignId)
 		if err != nil {
 			return err
 		}
@@ -93,9 +77,7 @@ func (p *ViewPolicy) viewAsOperator(actor AuthContext, target *models.User) erro
 		}
 		return nil
 	}
-
-	// Ruolo del target non gestito per un OPERATOR (es. target.Role == ADMIN).
-	return ErrForbidden
+	return ErrUnknownRole
 }
 
 func (p *ViewPolicy) viewAsAgent(actor AuthContext, target *models.User) error {

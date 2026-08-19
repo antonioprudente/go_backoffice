@@ -8,7 +8,6 @@ import (
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/middlewares"
-	"example/go_backoffice/policies"
 	"example/go_backoffice/services"
 
 	"github.com/gin-gonic/gin"
@@ -98,16 +97,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 
 	response, err := c.service.GetUserByIDAndRole(uid, targetRole.(string), actor)
 	if err != nil {
-		switch {
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
-		case errors.Is(err, policies.ErrForbidden):
-			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		default:
-			// ErrUnknownRole, ErrMissingRelation, ErrNotImplemented o errori
-			// tecnici veri (query fallita ecc.): questi restano 500
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero dell'utente"})
-		}
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusOK, response)
@@ -122,7 +112,14 @@ func (c *UserController) ActiveUserById(ctx *gin.Context) {
 		return
 	}
 	userID := uint(parsedID)
-	response, err := c.service.ChangeStatus(userID, enums.StatusActive)
+
+	targetRole, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+
+	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusActive)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
@@ -144,7 +141,14 @@ func (c *UserController) SuspendUserById(ctx *gin.Context) {
 		return
 	}
 	userID := uint(parsedID)
-	response, err := c.service.ChangeStatus(userID, enums.StatusSuspended)
+
+	targetRole, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+
+	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusSuspended)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
@@ -166,7 +170,14 @@ func (c *UserController) BlockUserById(ctx *gin.Context) {
 		return
 	}
 	userID := uint(parsedID)
-	response, err := c.service.ChangeStatus(userID, enums.StatusBlocked)
+
+	targetRole, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+
+	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusBlocked)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})

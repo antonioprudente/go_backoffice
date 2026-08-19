@@ -16,7 +16,7 @@ import (
 
 type AgentNodeService interface {
 	CreateNode(request *user.UserRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error)
-	GetTrees() ([]*agent_node.AgentNodeResponse, error)
+	GetTree(actor policies.AuthContext) ([]*agent_node.AgentNodeResponse, error)
 }
 
 type agentNodeService struct {
@@ -103,15 +103,29 @@ func (s *agentNodeService) CreateNode(request *user.UserRequest, actor policies.
 	return &response, nil
 }
 
-func (s *agentNodeService) GetTrees() ([]*agent_node.AgentNodeResponse, error) {
-	// 1. Recupera l'albero di modelli (slice di puntatori)
-	treeModels, err := s.repo.GetTrees()
-	if err != nil {
-		return nil, err
+func (s *agentNodeService) GetTree(actor policies.AuthContext) ([]*agent_node.AgentNodeResponse, error) {
+	switch actor.Role {
+	case enums.RoleAdmin.String():
+		treeModels, err := s.repo.GetTrees()
+		if err != nil {
+			return nil, err
+		}
+		return mappers.ToAgentNodePtrResponses(treeModels), nil
+	case enums.RoleOperator.String():
+		treeModels, err := s.repo.GetFilteredTreeByOperator(actor.UserID)
+		if err != nil {
+			return nil, err
+		}
+		return mappers.ToAgentNodePtrResponses(treeModels), nil
+	case enums.RoleAgent.String():
+		treeModels, err := s.repo.GetFilteredTreeByAgent(actor.UserID)
+		if err != nil {
+			return nil, err
+		}
+		return mappers.ToAgentNodePtrResponses(treeModels), nil
+	default:
+		return nil, nil
 	}
-
-	// 2. Mappa l'intero albero in un'unica riga pulita
-	return mappers.ToAgentNodePtrResponses(treeModels), nil
 }
 
 func toSet(ids []uint) map[uint]bool {

@@ -18,6 +18,8 @@ type AgentNodeRepo interface {
 	GetAncestors(id *uint) ([]models.AgentNode, error)
 	GetDescendants(id *uint) ([]models.AgentNode, error)
 	GetTrees() ([]*models.AgentNode, error)
+	GetFilteredTreeByAgent(userID uint) ([]*models.AgentNode, error)
+	GetFilteredTreeByOperator(userID uint) ([]*models.AgentNode, error)
 
 	GetNodeByAgentID(agentID uint) (*models.AgentNode, error)
 	IsDescendantOrSelf(ancestorAgentID uint, nodeID uint) (bool, error)
@@ -145,6 +147,7 @@ func (r *agentNodeRepo) GetDescendants(id *uint) ([]models.AgentNode, error) {
 
 	return descendants, err
 }
+
 func (r *agentNodeRepo) GetTrees() ([]*models.AgentNode, error) {
 	var nodes []*models.AgentNode
 
@@ -210,6 +213,148 @@ func (r *agentNodeRepo) GetTrees() ([]*models.AgentNode, error) {
 
 		if parent, exists := nodeMap[*node.ParentID]; exists {
 			parent.Children = append(parent.Children, node)
+		}
+	}
+
+	return roots, nil
+}
+
+// -----------------------------------------------------------------------------
+// LOGICA AGENT: Ritorna l'agente stesso + tutti i figli e relative agenzie
+// -----------------------------------------------------------------------------
+func (r *agentNodeRepo) GetFilteredTreeByAgent(userID uint) ([]*models.AgentNode, error) {
+	// 1. Trova il nodo radice dell'agente loggato
+	var targetNode models.AgentNode
+	if err := r.db.Where("agent_id = ?", userID).First(&targetNode).Error; err != nil {
+		return nil, fmt.Errorf("nodo agente non trovato per userID %d: %w", userID, err)
+	}
+
+	// 2. Sfrutta il Nested Set: tutti i discendenti hanno lft/rgt compresi nel nodo padre
+	var nodes []*models.AgentNode
+	err := r.db.Preload("Agent").
+		Where("lft >= ? AND rgt <= ?", targetNode.Lft, targetNode.Rgt).
+		Order("lft ASC").
+		Find(&nodes).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(nodes) == 0 {
+		return []*models.AgentNode{}, nil
+	}
+
+	// 3. Costruisce l'albero e associa le agenzie
+	return r.buildTreeWithAgencies(nodes, nil)
+}
+
+// -----------------------------------------------------------------------------
+// LOGICA OPERATOR: Ritorna solo agenti ed agenzie presenti nelle tabelle pivot
+// -----------------------------------------------------------------------------
+func (r *agentNodeRepo) GetFilteredTreeByOperator(operatorID uint) ([]*models.AgentNode, error) {
+	// 1. Recupera gli agent_id associati all'operatore dalla tabella pivot agent_operator
+	var allowedAgentIDs []uint
+	if err := r.db.Table("agent_operator").
+		Where("operator_id = ?", operatorID).
+		Pluck("agent_id", &allowedAgentIDs).Error; err != nil {
+		return nil, err
+	}
+
+	if len(allowedAgentIDs) == 0 {
+		return []*models.AgentNode{}, nil
+	}
+
+	// 2. Recupera le agenzie (ID utente o ForeignID) abilitate dalla tabella pivot agency_operator
+	var allowedAgencyIDs []uint
+	if err := r.db.Table("agency_operator").
+		Where("operator_id = ?", operatorID).
+		Pluck("agency_id", &allowedAgencyIDs).Error; err != nil {
+		return nil, err
+	}
+
+	// 3. Recupera solo i nodi degli agenti associati all'operatore
+	var nodes []*models.AgentNode
+	err := r.db.Preload("Agent").
+		Where("agent_id IN ?", allowedAgentIDs).
+		Order("lft ASC").
+		Find(&nodes).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(nodes) == 0 {
+		return []*models.AgentNode{}, nil
+	}
+
+	// 4. Costruisce l'albero applicando la restrizione per agenzie consentite
+	return r.buildTreeWithAgencies(nodes, allowedAgencyIDs)
+}
+
+// -----------------------------------------------------------------------------
+// HELPER: Funzione di utilità per caricare le agenzie e assemblare l'albero
+// -----------------------------------------------------------------------------
+func (r *agentNodeRepo) buildTreeWithAgencies(nodes []*models.AgentNode, allowedAgencyIDs []uint) ([]*models.AgentNode, error) {
+	// 1. Estrae i vari agentID univoci dai nodi recuperati
+	agentIDs := make([]uint, 0, len(nodes))
+	seenAgentID := make(map[uint]bool, len(nodes))
+	for _, node := range nodes {
+		if node.AgentID != 0 && !seenAgentID[node.AgentID] {
+			seenAgentID[node.AgentID] = true
+			agentIDs = append(agentIDs, node.AgentID)
+		}
+	}
+
+	agenciesByAgent := make(map[uint][]*models.User)
+	if len(agentIDs) > 0 {
+		var agencies []*models.User
+		query := r.db.Where("role = ? AND foreign_id IN ?", enums.RoleAgency, agentIDs)
+
+		// Se stiamo filtrando per operatore (allowedAgencyIDs != nil), applica la restrizione sulle agenzie
+		if allowedAgencyIDs != nil {
+			if len(allowedAgencyIDs) == 0 {
+				query = query.Where("1 = 0") // Nessuna agenzia visibile
+			} else {
+				query = query.Where("id IN ?", allowedAgencyIDs)
+			}
+		}
+
+		if err := query.Find(&agencies).Error; err != nil {
+			return nil, err
+		}
+
+		for _, agency := range agencies {
+			if agency.ForeignId == nil {
+				continue
+			}
+			key := *agency.ForeignId
+			agenciesByAgent[key] = append(agenciesByAgent[key], agency)
+		}
+	}
+
+	// 2. Ricostruzione dell'albero in un singolo ciclo
+	var roots []*models.AgentNode
+	nodeMap := make(map[uint]*models.AgentNode, len(nodes))
+
+	for _, node := range nodes {
+		node.Children = make([]*models.AgentNode, 0)
+
+		if agencies, ok := agenciesByAgent[node.AgentID]; ok {
+			node.Agencies = agencies
+		} else {
+			node.Agencies = make([]*models.User, 0)
+		}
+
+		nodeMap[node.ID] = node
+
+		// Se il padre non esiste in nodeMap (perché è la radice del sottoalbero o è stato filtrato via),
+		// questo nodo diventa un nodo principale ("root") nel nostro risultato.
+		if node.ParentID == nil {
+			roots = append(roots, node)
+		} else if parent, exists := nodeMap[*node.ParentID]; exists {
+			parent.Children = append(parent.Children, node)
+		} else {
+			roots = append(roots, node)
 		}
 	}
 

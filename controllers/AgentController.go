@@ -55,11 +55,18 @@ func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, response)
 }
 
-func (c *AgentController) GetAgentsTree(ctx *gin.Context) {
-	agents, err := c.nodeService.GetTrees()
+func (c *AgentController) GetFilteredTree(ctx *gin.Context) {
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	agents, err := c.nodeService.GetTree(actor)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli agenti"})
 		return
 	}
 	ctx.JSON(http.StatusOK, agents)
+
 }

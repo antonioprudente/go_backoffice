@@ -29,9 +29,9 @@ func main() {
 	router.POST("/login", authController.Login)
 
 	protected := router.Group("")
-
 	protected.Use(middlewares.AuthMiddleware())
 	{
+
 		protected.POST("/logout", authController.Logout) //POST /logout
 
 		// OPERATORS
@@ -46,6 +46,9 @@ func main() {
 			{
 				adminOnly.POST("", userController.CreateUser)
 				adminOnly.GET("", userController.GetUsers)
+				adminOnly.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
+				adminOnly.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
+				adminOnly.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
 			}
 
 			// Rotta per ADMIN e OPERATOR (self-check/policy)
@@ -79,10 +82,13 @@ func main() {
 			middlewares.SetRoleMiddleware(enums.RoleAgent.String()),
 		)
 		{
-			agents.POST("", agentController.CreateAgentNode)   // POST /agents
-			agents.GET("", userController.GetUsers)            // GET /agents
-			agents.GET("/:id", userController.GetUserByID)     // GET /agents/:id
-			agents.GET("/tree", agentController.GetAgentsTree) // GET /agents/tree
+			agents.POST("", agentController.CreateAgentNode)             // POST /agents
+			agents.GET("", userController.GetUsers)                      // GET /agents
+			agents.GET("/:id", userController.GetUserByID)               // GET /agents/:id
+			agents.GET("/tree", agentController.GetFilteredTree)         // GET /agents/tree
+			agents.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
+			agents.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
+			agents.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
 		}
 
 		// AGENCIES CALLS
@@ -92,9 +98,12 @@ func main() {
 			middlewares.SetRoleMiddleware(enums.RoleAgency.String()),
 		)
 		{
-			agencies.POST("", userController.CreateUser)     // POST /agencies
-			agencies.GET("", userController.GetUsers)        // GET /agencies
-			agencies.GET("/:id", userController.GetUserByID) // GET /agencies/:id
+			agencies.POST("", userController.CreateUser)                   // POST /agencies
+			agencies.GET("", userController.GetUsers)                      // GET /agencies
+			agencies.GET("/:id", userController.GetUserByID)               // GET /agencies/:id
+			agencies.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
+			agencies.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
+			agencies.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
 		}
 
 		// USERS CALLS

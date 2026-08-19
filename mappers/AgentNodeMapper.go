@@ -54,10 +54,10 @@ func ToAgentNodeResponse(u *models.AgentNode) agent_node.AgentNodeResponse {
 }
 
 // ToAgentNodeResponses converte uno slice di model, utile per GetAllNodes
-func ToAgentNodeResponses(nodes []models.AgentNode) []agent_node.AgentNodeResponse {
+func ToAgentNodeResponses(nodes []*models.AgentNode) []agent_node.AgentNodeResponse {
 	res := make([]agent_node.AgentNodeResponse, len(nodes))
 	for i, n := range nodes {
-		res[i] = ToAgentNodeResponse(&n)
+		res[i] = ToAgentNodeResponse(n)
 	}
 
 	return res

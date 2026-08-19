@@ -17,7 +17,7 @@ type UserRepo interface {
 	GetByUsername(username string) (*models.User, error)
 	GetByEmail(email string) (*models.User, error)
 	Create(user *models.User) error
-	UpdateStatus(id uint, status string) (*models.User, error)
+	UpdateStatusByIdAndRole(id uint, role string, status string) (*models.User, error)
 	Delete(id string) error
 
 	GetAllByRoleAndIDs(role string, ids []uint) ([]models.User, error)
@@ -71,12 +71,20 @@ func (r *userRepo) Create(user *models.User) error {
 }
 
 // Implementazione
-func (r *userRepo) UpdateStatus(id uint, status string) (*models.User, error) {
-	if err := r.db.Model(&models.User{}).Where("id = ?", id).Update("status", status).Error; err != nil {
-		return nil, err
+func (r *userRepo) UpdateStatusByIdAndRole(id uint, role string, status string) (*models.User, error) {
+	result := r.db.Model(&models.User{}).
+		Where("id = ? AND role = ?", id, role).
+		Update("status", status)
+
+	if result.Error != nil {
+		return nil, result.Error
 	}
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound // oppure un errore custom tipo "utente non trovato per questo ruolo"
+	}
+
 	var updatedUser models.User
-	if err := r.db.First(&updatedUser, id).Error; err != nil {
+	if err := r.db.Where("id = ? AND role = ?", id, role).First(&updatedUser).Error; err != nil {
 		return nil, err
 	}
 	return &updatedUser, nil
