@@ -8,10 +8,10 @@ import (
 )
 
 // ToAgentNodeModel converte una UserRequest nel model da persistere
-func ToAgentNodeModel(req *agent_node.AgentNodeRequest) *models.AgentNode {
+func ToAgentNodeModel(req *user.UserRequest, parentId *uint) *models.AgentNode {
 	return &models.AgentNode{
-		ParentID: req.ParentId,
-		Agent:    ToUserModel(req.Agent),
+		ParentID: parentId,
+		Agent:    ToUserModel(req),
 	}
 }
 

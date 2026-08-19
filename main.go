@@ -69,6 +69,7 @@ func main() {
 			pivot.POST("/to/agent", agentOperatorController.AssignAgentToOperator)
 			pivot.POST("/to/agencies", agencyOperatorController.AssignAgenciesToOperator)
 			pivot.POST("/to/agents", agentOperatorController.AssignAgentsToOperator)
+			pivot.DELETE("/:operatorID/from/agent/:agentID", agentOperatorController.RemoveAgentFromOperator)
 		}
 
 		// AGENTS CALLS

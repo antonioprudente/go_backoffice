@@ -7,9 +7,12 @@ import (
 )
 
 type AgentOperatorRepo interface {
+	WithTx(tx *gorm.DB) AgentOperatorRepo
+
 	AssignAgent(model *models.AgentOperator) (*models.AgentOperator, error)
 	AssignAgentsMassive(agentOperator *[]models.AgentOperator) (*[]models.AgentOperator, error)
 	GetByOperatorIDAndAgentID(operatorID uint, agentID uint) (models.AgentOperator, error)
+	DeleteByAgentIDAndOperatorID(agentID uint, operatorID uint) (bool, error)
 }
 
 type agentOperatorRepo struct {
@@ -18,6 +21,10 @@ type agentOperatorRepo struct {
 
 func NewAgentOperatorRepository(db *gorm.DB) AgentOperatorRepo {
 	return &agentOperatorRepo{db: db}
+}
+
+func (r *agentOperatorRepo) WithTx(tx *gorm.DB) AgentOperatorRepo {
+	return &agentOperatorRepo{db: tx}
 }
 
 func (r *agentOperatorRepo) AssignAgent(model *models.AgentOperator) (*models.AgentOperator, error) {
@@ -49,4 +56,18 @@ func (r *agentOperatorRepo) GetByOperatorIDAndAgentID(operatorID uint, agentID u
 	}
 
 	return agentOperator, nil
+}
+
+func (r *agentOperatorRepo) DeleteByAgentIDAndOperatorID(agentID uint, operatorID uint) (bool, error) {
+	result := r.db.Where("operator_id = ? AND agent_id = ?", operatorID, agentID).Delete(&models.AgentOperator{})
+
+	if result.Error != nil {
+		return false, result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return false, nil
+	}
+
+	return true, nil
 }

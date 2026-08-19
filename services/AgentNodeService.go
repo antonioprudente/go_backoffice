@@ -1,62 +1,102 @@
 package services
 
 import (
+	"errors"
 	"example/go_backoffice/dto/agent_node"
+	"example/go_backoffice/dto/user"
+	"example/go_backoffice/enums"
 	"example/go_backoffice/mappers"
 	"example/go_backoffice/models"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type AgentNodeService interface {
-	CreateNode(request *agent_node.AgentNodeRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error)
+	CreateNode(request *user.UserRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error)
 	GetTrees() ([]*agent_node.AgentNodeResponse, error)
 }
 
 type agentNodeService struct {
-	repo      repositories.AgentNodeRepo
-	scopeRepo repositories.ScopeRepo
-	policy    policies.UserPolicy
+	db          *gorm.DB
+	repo        repositories.AgentNodeRepo
+	agentOpRepo repositories.AgentOperatorRepo
+	scopeRepo   repositories.ScopeRepo
+	policy      policies.UserPolicy
 }
 
 func NewAgentNodeService(
+	db *gorm.DB,
 	repo repositories.AgentNodeRepo,
+	agentOpRepo repositories.AgentOperatorRepo,
 	scopeRepo repositories.ScopeRepo,
 	policy policies.UserPolicy,
 ) AgentNodeService {
 	return &agentNodeService{
-		repo:      repo,
-		scopeRepo: scopeRepo,
-		policy:    policy,
+		db:          db,
+		repo:        repo,
+		agentOpRepo: agentOpRepo,
+		scopeRepo:   scopeRepo,
+		policy:      policy,
 	}
 }
 
-func (s *agentNodeService) CreateNode(request *agent_node.AgentNodeRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error) {
-	if request.Agent != nil {
-		hashed, err := bcrypt.GenerateFromPassword([]byte(request.Agent.Password), bcrypt.DefaultCost)
-		if err != nil {
-			return nil, err
-		}
-		request.Agent.Password = string(hashed)
+func (s *agentNodeService) CreateNode(request *user.UserRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error) {
+	if request == nil {
+		return nil, errors.New("richiesta non valida")
 	}
 
-	if request.Agent.ForeignId != nil {
-		parentId, err := s.repo.GetParentIdByAgentId(*request.Agent.ForeignId)
-		if err != nil {
-			return nil, err
-		}
-		request.ParentId = parentId
-	}
-
-	newNode := mappers.ToAgentNodeModel(request)
-	if err := s.policy.Create(actor, newNode.Agent); err != nil {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+	if err != nil {
 		return nil, err
 	}
+	request.Password = string(hashed)
 
-	if err := s.repo.Create(newNode); err != nil {
-		return nil, err
+	var newNode *models.AgentNode
+
+	txErr := s.db.Transaction(func(tx *gorm.DB) error {
+		agentNodeRepo := s.repo.WithTx(tx)
+		agentOpRepo := s.agentOpRepo.WithTx(tx)
+
+		// Se è presente un ForeignId, il nuovo nodo va agganciato come figlio
+		// del nodo dell'agente a cui il ForeignId fa riferimento
+		var parentId *uint
+		if request.ForeignId != nil {
+			parentNode, err := agentNodeRepo.GetNodeByAgentID(*request.ForeignId)
+			if err != nil {
+				return err
+			}
+			parentId = &parentNode.ID
+		}
+
+		node := mappers.ToAgentNodeModel(request, parentId)
+
+		if err := s.policy.Create(actor, node.Agent); err != nil {
+			return err
+		}
+
+		if err := agentNodeRepo.Create(node); err != nil {
+			return err
+		}
+
+		if actor.Role == enums.RoleOperator.String() {
+			agentOp := &models.AgentOperator{
+				OperatorID: actor.UserID,
+				AgentID:    node.AgentID,
+			}
+			if _, err := agentOpRepo.AssignAgent(agentOp); err != nil {
+				return err
+			}
+		}
+
+		newNode = node
+		return nil
+	})
+
+	if txErr != nil {
+		return nil, txErr
 	}
 
 	response := mappers.ToAgentNodeResponse(newNode)

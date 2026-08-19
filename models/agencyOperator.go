@@ -1,12 +1,14 @@
 package models
 
-import "gorm.io/gorm"
+import "time"
 
 type AgencyOperator struct {
-	gorm.Model
-	AgencyID   uint `json:"agency_id" gorm:"primaryKey"`
-	OperatorID uint `json:"operator_id" gorm:"primaryKey"`
+	OperatorID uint      `gorm:"primaryKey;column:operator_id" json:"operator_id"`
+	AgencyID   uint      `gorm:"primaryKey;column:agency_id" json:"agency_id"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
 
-	Agency   *User `json:"agency,omitempty" gorm:"foreignKey:AgencyID"`
-	Operator *User `json:"operator,omitempty" gorm:"foreignKey:OperatorID"`
+func (AgencyOperator) TableName() string {
+	return "agency_operator"
 }

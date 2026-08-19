@@ -12,6 +12,7 @@ import (
 type AgentOperatorService interface {
 	AssignAgentToOperator(request *pivot.AssignToOpRequest, actor policies.AuthContext) (*pivot.AssignToOpResponse, error)
 	AssignAgentsToOperator(request *pivot.ArraysToOpRequest, actor policies.AuthContext) (*pivot.ArraysToOpResponse, error)
+	RemoveAgentFromOperator(agentID *uint, operatorID *uint, actor policies.AuthContext) (*bool, error)
 }
 
 type agentOperatorService struct {
@@ -73,4 +74,18 @@ func (s *agentOperatorService) AssignAgentsToOperator(request *pivot.ArraysToOpR
 
 	response := mappers.ToArrAgentOperatorResponse(newPivots)
 	return response, nil
+}
+
+func (s *agentOperatorService) RemoveAgentFromOperator(agentID *uint, operatorID *uint, actor policies.AuthContext) (*bool, error) {
+	res, err := s.repo.DeleteByAgentIDAndOperatorID(*agentID, *operatorID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Se nessuna riga è stata cancellata, restituiamo un errore esplicito
+	if !res {
+		return nil, errors.New("associazione tra agente e operatore non trovata")
+	}
+
+	return &res, nil
 }

@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"example/go_backoffice/dto/agent_node"
+	"example/go_backoffice/dto/user"
 	"example/go_backoffice/middlewares"
 	"example/go_backoffice/services"
 	"net/http"
@@ -20,36 +20,25 @@ func NewAgentController(userService services.UserService, nodeService services.A
 		nodeService: nodeService,
 	}
 }
-
 func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
-	var newAgentNodeReq agent_node.AgentNodeRequest
+	var newUserRequest user.UserRequest
 
-	// Binding JSON
-	if err := ctx.ShouldBindJSON(&newAgentNodeReq); err != nil {
+	if err := ctx.ShouldBindJSON(&newUserRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati utente non validi"})
 		return
 	}
 
-	// Recupero targetRole dal contesto
 	role, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
 		return
 	}
-
-	// Verifica che agent sia popolato
-	if newAgentNodeReq.Agent == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Il campo 'agent' è obbligatorio"})
-		return
-	}
-
-	// verifica il formato del ruolo e lo inserisce alla request
 	roleStr, ok := role.(string)
 	if !ok {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Formato ruolo non valido"})
 		return
 	}
-	newAgentNodeReq.Agent.Role = roleStr
+	newUserRequest.Role = roleStr
 
 	actor, err := middlewares.ActorFromContext(ctx)
 	if err != nil {
@@ -57,8 +46,7 @@ func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 		return
 	}
 
-	// invocazione del service per il salvataggio
-	response, err := c.nodeService.CreateNode(&newAgentNodeReq, actor)
+	response, err := c.nodeService.CreateNode(&newUserRequest, actor)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return

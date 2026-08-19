@@ -5,10 +5,12 @@ import (
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/mappers"
+	"example/go_backoffice/models"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type UserService interface {
@@ -20,20 +22,26 @@ type UserService interface {
 }
 
 type userService struct {
-	repo      repositories.UserRepo
-	scopeRepo repositories.ScopeRepo
-	policy    policies.UserPolicy
+	db           *gorm.DB
+	repo         repositories.UserRepo
+	scopeRepo    repositories.ScopeRepo
+	agencyOpRepo repositories.AgencyOperatorRepo
+	policy       policies.UserPolicy
 }
 
 func NewUserService(
+	db *gorm.DB,
 	repo repositories.UserRepo,
 	scopeRepo repositories.ScopeRepo,
+	agencyOpRepo repositories.AgencyOperatorRepo,
 	policy policies.UserPolicy,
 ) UserService {
 	return &userService{
-		repo:      repo,
-		scopeRepo: scopeRepo,
-		policy:    policy,
+		db:           db,
+		repo:         repo,
+		scopeRepo:    scopeRepo,
+		agencyOpRepo: agencyOpRepo,
+		policy:       policy,
 	}
 }
 
@@ -72,9 +80,29 @@ func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthC
 	if err := s.policy.Create(actor, newUser); err != nil {
 		return nil, err
 	}
+	txErr := s.db.Transaction(func(tx *gorm.DB) error {
+		userRepo := s.repo.WithTx(tx)
+		agencyOpRepo := s.agencyOpRepo.WithTx(tx)
 
-	if err := s.repo.Create(newUser); err != nil {
-		return nil, err
+		if err := userRepo.Create(newUser); err != nil {
+			return err
+		}
+		// Se un OPERATOR crea una AGENCY, va creato anche il collegamento
+		// nella tabella pivot AgencyOperator
+		if actor.Role == enums.RoleOperator.String() && newUser.Role == enums.RoleAgency {
+			agencyOp := &models.AgencyOperator{
+				OperatorID: actor.UserID,
+				AgencyID:   newUser.ID,
+			}
+			if _, err := agencyOpRepo.AssignAgency(agencyOp); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if txErr != nil {
+		return nil, txErr
 	}
 
 	response := mappers.ToUserResponse(newUser)

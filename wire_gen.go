@@ -19,8 +19,9 @@ import (
 func InitUserController(db *gorm.DB) *controllers.UserController {
 	userRepo := repositories.NewUserRepository(db)
 	scopeRepo := repositories.NewScopeRepository(db)
+	agencyOperatorRepo := repositories.NewAgencyOperatorRepository(db)
 	userPolicy := policies.NewUserPolicy(scopeRepo, userRepo)
-	userService := services.NewUserService(userRepo, scopeRepo, userPolicy)
+	userService := services.NewUserService(db, userRepo, scopeRepo, agencyOperatorRepo, userPolicy)
 	userController := controllers.NewUserController(userService)
 	return userController
 }
@@ -28,10 +29,12 @@ func InitUserController(db *gorm.DB) *controllers.UserController {
 func InitAgentController(db *gorm.DB) *controllers.AgentController {
 	userRepo := repositories.NewUserRepository(db)
 	scopeRepo := repositories.NewScopeRepository(db)
+	agencyOperatorRepo := repositories.NewAgencyOperatorRepository(db)
 	userPolicy := policies.NewUserPolicy(scopeRepo, userRepo)
-	userService := services.NewUserService(userRepo, scopeRepo, userPolicy)
+	userService := services.NewUserService(db, userRepo, scopeRepo, agencyOperatorRepo, userPolicy)
 	agentNodeRepo := repositories.NewAgentNodeRepository(db)
-	agentNodeService := services.NewAgentNodeService(agentNodeRepo, scopeRepo, userPolicy)
+	agentOperatorRepo := repositories.NewAgentOperatorRepository(db)
+	agentNodeService := services.NewAgentNodeService(db, agentNodeRepo, agentOperatorRepo, scopeRepo, userPolicy)
 	agentController := controllers.NewAgentController(userService, agentNodeService)
 	return agentController
 }

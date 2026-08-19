@@ -11,6 +11,8 @@ import (
 )
 
 type AgentNodeRepo interface {
+	WithTx(tx *gorm.DB) AgentNodeRepo
+
 	GetParentIdByAgentId(agentId uint) (*uint, error)
 	Create(nodeModel *models.AgentNode) error
 	GetAncestors(id *uint) ([]models.AgentNode, error)
@@ -29,6 +31,10 @@ type agentNodeRepo struct {
 
 func NewAgentNodeRepository(db *gorm.DB) AgentNodeRepo {
 	return &agentNodeRepo{db: db}
+}
+
+func (r *agentNodeRepo) WithTx(tx *gorm.DB) AgentNodeRepo {
+	return &agentNodeRepo{db: tx}
 }
 
 func (r *agentNodeRepo) GetParentIdByAgentId(agentId uint) (*uint, error) {

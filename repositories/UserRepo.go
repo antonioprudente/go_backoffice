@@ -10,6 +10,8 @@ import (
 )
 
 type UserRepo interface {
+	WithTx(tx *gorm.DB) UserRepo
+
 	GetAllByRole(role string) ([]models.User, error)
 	GetByIDAndRole(id uint, role string) (*models.User, error)
 	GetByUsername(username string) (*models.User, error)
@@ -28,6 +30,10 @@ type userRepo struct {
 
 func NewUserRepository(db *gorm.DB) UserRepo {
 	return &userRepo{db: db}
+}
+
+func (r *userRepo) WithTx(tx *gorm.DB) UserRepo {
+	return &userRepo{db: tx}
 }
 
 func (r *userRepo) GetAllByRole(role string) ([]models.User, error) {

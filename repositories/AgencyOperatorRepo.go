@@ -7,6 +7,7 @@ import (
 )
 
 type AgencyOperatorRepo interface {
+	WithTx(tx *gorm.DB) AgencyOperatorRepo
 	AssignAgency(model *models.AgencyOperator) (*models.AgencyOperator, error)
 	AssignAgenciesMassive(agencyOperator *[]models.AgencyOperator) (*[]models.AgencyOperator, error)
 	GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (models.AgencyOperator, error)
@@ -18,6 +19,10 @@ type agencyOperatorRepo struct {
 
 func NewAgencyOperatorRepository(db *gorm.DB) AgencyOperatorRepo {
 	return &agencyOperatorRepo{db: db}
+}
+
+func (r *agencyOperatorRepo) WithTx(tx *gorm.DB) AgencyOperatorRepo {
+	return &agencyOperatorRepo{db: tx}
 }
 
 func (r *agencyOperatorRepo) AssignAgency(model *models.AgencyOperator) (*models.AgencyOperator, error) {

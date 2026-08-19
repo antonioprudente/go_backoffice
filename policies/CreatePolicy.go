@@ -38,7 +38,7 @@ func (p *CreatePolicy) createAsOperator(actor AuthContext, target *models.User) 
 	case enums.RoleAgent:
 		return nil
 	case enums.RoleAgency:
-		assigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, target.Foreign.ID)
+		assigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, *target.ForeignId)
 		if err != nil {
 			return err
 		}

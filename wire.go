@@ -17,6 +17,7 @@ func InitUserController(db *gorm.DB) *controllers.UserController {
 	wire.Build(
 		repositories.NewUserRepository,
 		repositories.NewScopeRepository,
+		repositories.NewAgencyOperatorRepository,
 		policies.NewUserPolicy,
 		services.NewUserService,
 		controllers.NewUserController,
@@ -29,6 +30,8 @@ func InitAgentController(db *gorm.DB) *controllers.AgentController {
 		repositories.NewAgentNodeRepository,
 		repositories.NewUserRepository,
 		repositories.NewScopeRepository,
+		repositories.NewAgentOperatorRepository,
+		repositories.NewAgencyOperatorRepository,
 		policies.NewUserPolicy,
 		services.NewAgentNodeService,
 		services.NewUserService,
