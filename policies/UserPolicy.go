@@ -27,7 +27,7 @@ func NewUserPolicy(scopeRepo repositories.ScopeRepo, userRepo repositories.UserR
 		createPolicy:       NewCreatePolicy(scopeRepo, userRepo),
 		updatePolicy:       NewUpdatePolicy(scopeRepo, userRepo),
 		updateStatusPolicy: NewUpdateStatusPolicy(scopeRepo),
-		deletePolicy:       NewDeletePolicy(scopeRepo),
+		deletePolicy:       NewDeletePolicy(scopeRepo, userRepo),
 	}
 }
 

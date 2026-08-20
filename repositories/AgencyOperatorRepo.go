@@ -11,6 +11,7 @@ type AgencyOperatorRepo interface {
 	AssignAgency(model *models.AgencyOperator) (*models.AgencyOperator, error)
 	AssignAgenciesMassive(agencyOperator *[]models.AgencyOperator) (*[]models.AgencyOperator, error)
 	GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (models.AgencyOperator, error)
+	DeleteByAgencyIDAndOperatorID(agencyID uint, operatorID uint) (bool, error)
 }
 
 type agencyOperatorRepo struct {
@@ -54,4 +55,18 @@ func (r *agencyOperatorRepo) GetByOperatorIDAndAgencyID(operatorID uint, agencyI
 	}
 
 	return agencyOperator, nil
+}
+
+func (r *agencyOperatorRepo) DeleteByAgencyIDAndOperatorID(agencyID uint, operatorID uint) (bool, error) {
+	result := r.db.Where("operator_id = ? AND agency_id = ?", operatorID, agencyID).Delete(&models.AgencyOperator{})
+
+	if result.Error != nil {
+		return false, result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return false, nil
+	}
+
+	return true, nil
 }

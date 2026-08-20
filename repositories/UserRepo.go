@@ -19,7 +19,7 @@ type UserRepo interface {
 	Create(user *models.User) error
 	Update(user *models.User) error
 	UpdateStatusByIdAndRole(id uint, role string, status string) (*models.User, error)
-	Delete(id string) error
+	DeleteByIdAndRole(id uint, role string) error
 
 	GetAllByRoleAndIDs(role string, ids []uint) ([]models.User, error)
 	GetAllByRoleAndForeignIDs(role string, foreignIDs []uint) ([]models.User, error)
@@ -95,12 +95,15 @@ func (r *userRepo) UpdateStatusByIdAndRole(id uint, role string, status string) 
 	return &updatedUser, nil
 }
 
-func (r *userRepo) Delete(id string) error {
-	uid, err := parseID(id)
-	if err != nil {
-		return err
+func (r *userRepo) DeleteByIdAndRole(id uint, role string) error {
+	result := r.db.Where("id = ? AND role = ?", id, role).Delete(&models.User{})
+	if result.Error != nil {
+		return result.Error
 	}
-	return r.db.Delete(&models.User{}, uid).Error
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func parseID(id string) (uint, error) {

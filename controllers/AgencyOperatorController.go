@@ -5,6 +5,7 @@ import (
 	"example/go_backoffice/middlewares"
 	"example/go_backoffice/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -58,4 +59,48 @@ func (c *AgencyOperatorController) AssignAgenciesToOperator(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, response)
+}
+
+func (c *AgencyOperatorController) RemoveAgencyFromOperator(ctx *gin.Context) {
+	agId := ctx.Param("agencyID")
+	uid64, err := strconv.ParseUint(agId, 10, 64) // Usiamo 64 specificamente per ParseUint
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agencyID non valido"})
+		return
+	}
+	agencyID := uint(uid64)
+
+	opId := ctx.Param("operatorID")
+	uid64, err = strconv.ParseUint(opId, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "operatorID non valido"})
+		return
+	}
+	operatorID := uint(uid64)
+
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := c.service.RemoveAgencyFromOperator(&agencyID, &operatorID, actor)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Controlla se res è nil oppure se punta a false
+	if res == nil || !*res {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"message": "Nessuna associazione trovata da eliminare",
+			"data":    false,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Agenzia rimossa con successo",
+		"data":    true,
+	})
 }

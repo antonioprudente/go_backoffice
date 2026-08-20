@@ -2,7 +2,7 @@
 package user // non "dto/user"
 
 type UserRequest struct {
-	Id        *uint  `json:"id"`
+	Id        *uint  `json:"id,omitempty"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Username  string `json:"username"`

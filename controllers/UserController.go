@@ -8,6 +8,7 @@ import (
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/middlewares"
+	"example/go_backoffice/policies"
 	"example/go_backoffice/services"
 
 	"github.com/gin-gonic/gin"
@@ -45,9 +46,16 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	// creazione a db (le policy di autorizzazione fine sono applicate dentro il service)
 	response, err := c.service.CreateUser(&newUserReq, actor)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
@@ -77,6 +85,14 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 	response, err := c.service.UpdateUser(&updateUserRequest, actor)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
@@ -126,7 +142,15 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 
 	response, err := c.service.GetUserByIDAndRole(uid, targetRole.(string), actor)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusOK, response)
@@ -141,7 +165,15 @@ func (c *UserController) GetPersonalProfile(ctx *gin.Context) {
 
 	response, err := c.service.GetUserByIDAndRole(actor.UserID, actor.Role, actor)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusOK, response)
@@ -173,6 +205,10 @@ func (c *UserController) ActiveUserById(ctx *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante l'aggiornamento dello stato dell'utente"})
@@ -210,6 +246,11 @@ func (c *UserController) SuspendUserById(ctx *gin.Context) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
 			return
 		}
+
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante l'aggiornamento dello stato dell'utente"})
 		return
 	}
@@ -242,27 +283,52 @@ func (c *UserController) BlockUserById(ctx *gin.Context) {
 	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusBlocked, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
+			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante l'aggiornamento dello stato dell'utente"})
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, response)
 }
-
 func (c *UserController) DeleteUser(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+	idStr := ctx.Param("id")
+	parsedID, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID non valido"})
 		return
 	}
+	userID := uint(parsedID)
 
-	if err := c.service.DeleteUser(id); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Impossibile eliminare l'utente"})
+	targetRole, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
 		return
 	}
 
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = c.service.DeleteUserByIdAndRole(userID, targetRole.(string), actor)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	ctx.JSON(http.StatusOK, gin.H{"message": "Utente eliminato con successo"})
 }

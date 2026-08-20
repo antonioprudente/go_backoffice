@@ -19,7 +19,7 @@ type UserService interface {
 	CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	UpdateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	ChangeStatus(userID uint, targetRole string, status enums.Status, actor policies.AuthContext) (*user.UserResponse, error)
-	DeleteUser(id string) error
+	DeleteUserByIdAndRole(id uint, targetRole string, actor policies.AuthContext) error
 }
 
 type userService struct {
@@ -158,8 +158,12 @@ func (s *userService) UpdateUser(request *user.UserRequest, actor policies.AuthC
 
 func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.Status, actor policies.AuthContext) (*user.UserResponse, error) {
 
-	_, err := s.repo.GetByIDAndRole(userID, targetRole)
+	existing, err := s.repo.GetByIDAndRole(userID, targetRole)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.policy.UpdateStatus(actor, existing); err != nil {
 		return nil, err
 	}
 
@@ -172,6 +176,14 @@ func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.
 	return &response, nil
 }
 
-func (s *userService) DeleteUser(id string) error {
-	return s.repo.Delete(id)
+func (s *userService) DeleteUserByIdAndRole(id uint, targetRole string, actor policies.AuthContext) error {
+	existing, err := s.repo.GetByIDAndRole(id, targetRole)
+	if err != nil {
+		return err
+	}
+
+	if err := s.policy.Delete(actor, existing); err != nil {
+		return err
+	}
+	return s.repo.DeleteByIdAndRole(id, targetRole)
 }
