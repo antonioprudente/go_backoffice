@@ -35,8 +35,12 @@ func (p *CreatePolicy) Check(actor AuthContext, target *models.User) error {
 
 func (p *CreatePolicy) createAsOperator(actor AuthContext, target *models.User) error {
 	switch target.Role {
+	case enums.RoleOperator:
+		return ErrForbidden
+
 	case enums.RoleAgent:
 		return nil
+
 	case enums.RoleAgency:
 		assigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, *target.ForeignId)
 		if err != nil {
@@ -62,6 +66,9 @@ func (p *CreatePolicy) createAsOperator(actor AuthContext, target *models.User) 
 
 func (p *CreatePolicy) createAsAgent(actor AuthContext, target *models.User) error {
 	switch target.Role {
+	case enums.RoleOperator:
+		return ErrForbidden
+
 	case enums.RoleAgent, enums.RoleAgency:
 		children, err := p.scopeRepo.NodeChildrenAgentIds(actor.UserID)
 		if err != nil {

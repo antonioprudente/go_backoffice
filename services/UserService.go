@@ -17,7 +17,7 @@ type UserService interface {
 	GetAllByRole(role string) ([]user.UserResponse, error)
 	GetUserByIDAndRole(id uint, targetRole string, actor policies.AuthContext) (*user.UserResponse, error)
 	CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
-	ChangeStatus(userID uint, targetRole string, status enums.Status) (*user.UserResponse, error)
+	ChangeStatus(userID uint, targetRole string, status enums.Status, actor policies.AuthContext) (*user.UserResponse, error)
 	DeleteUser(id string) error
 }
 
@@ -109,11 +109,18 @@ func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthC
 	return &response, nil
 }
 
-func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.Status) (*user.UserResponse, error) {
+func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.Status, actor policies.AuthContext) (*user.UserResponse, error) {
+
+	_, err := s.repo.GetByIDAndRole(userID, targetRole)
+	if err != nil {
+		return nil, err
+	}
+
 	updated, err := s.repo.UpdateStatusByIdAndRole(userID, targetRole, string(status))
 	if err != nil {
 		return nil, err
 	}
+
 	response := mappers.ToUserResponse(updated)
 	return &response, nil
 }

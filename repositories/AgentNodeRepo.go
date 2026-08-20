@@ -148,12 +148,13 @@ func (r *agentNodeRepo) GetDescendants(id *uint) ([]models.AgentNode, error) {
 	return descendants, err
 }
 
+// GetTrees recupera l'intero albero (nessuna restrizione su agenti/agenzie).
+// La costruzione dell'albero e l'associazione delle agenzie sono delegate a
+// buildTreeWithAgencies (allowedAgencyIDs = nil -> nessun filtro sulle agenzie),
+// evitando di duplicare qui la stessa logica già usata dalle viste filtrate.
 func (r *agentNodeRepo) GetTrees() ([]*models.AgentNode, error) {
 	var nodes []*models.AgentNode
-
-	// 1. Recupera tutti i nodi ordinati per 'lft' con un'unica query.
-	err := r.db.Preload("Agent").Order("lft ASC").Find(&nodes).Error
-	if err != nil {
+	if err := r.db.Preload("Agent").Order("lft ASC").Find(&nodes).Error; err != nil {
 		return nil, err
 	}
 
@@ -161,62 +162,7 @@ func (r *agentNodeRepo) GetTrees() ([]*models.AgentNode, error) {
 		return []*models.AgentNode{}, nil
 	}
 
-	// 1bis. Raccoglie gli AgentID unici per recuperare le agenzie in un'unica query
-	agentIDs := make([]uint, 0, len(nodes))
-	seenAgentID := make(map[uint]bool, len(nodes))
-	for _, node := range nodes {
-		if node.AgentID != 0 && !seenAgentID[node.AgentID] {
-			seenAgentID[node.AgentID] = true
-			agentIDs = append(agentIDs, node.AgentID)
-		}
-	}
-
-	agenciesByAgent := make(map[uint][]*models.User)
-	if len(agentIDs) > 0 {
-		var agencies []*models.User
-		if err := r.db.
-			Where("role = ? AND foreign_id IN ?", enums.RoleAgency, agentIDs).
-			Find(&agencies).Error; err != nil {
-			return nil, err
-		}
-
-		for _, agency := range agencies {
-			if agency.ForeignId == nil {
-				continue
-			}
-			key := *agency.ForeignId
-			agenciesByAgent[key] = append(agenciesByAgent[key], agency)
-		}
-	}
-
-	// 2. Un solo passaggio: grazie all'ordinamento 'lft ASC' il genitore di un
-	// nodo si trova SEMPRE prima del nodo stesso nella slice (proprietà del
-	// nested set), quindi quando processiamo "node" il suo Parent è già in
-	// nodeMap e possiamo collegarlo subito, senza un secondo ciclo separato.
-	var roots []*models.AgentNode
-	nodeMap := make(map[uint]*models.AgentNode, len(nodes))
-
-	for _, node := range nodes {
-		node.Children = make([]*models.AgentNode, 0)
-
-		if agencies, ok := agenciesByAgent[node.AgentID]; ok {
-			node.Agencies = agencies
-		} else {
-			node.Agencies = make([]*models.User, 0)
-		}
-
-		nodeMap[node.ID] = node
-		if node.ParentID == nil {
-			roots = append(roots, node)
-			continue
-		}
-
-		if parent, exists := nodeMap[*node.ParentID]; exists {
-			parent.Children = append(parent.Children, node)
-		}
-	}
-
-	return roots, nil
+	return r.buildTreeWithAgencies(nodes, nil)
 }
 
 // -----------------------------------------------------------------------------

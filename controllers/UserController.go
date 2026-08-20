@@ -119,7 +119,13 @@ func (c *UserController) ActiveUserById(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusActive)
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusActive, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
@@ -148,7 +154,13 @@ func (c *UserController) SuspendUserById(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusSuspended)
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusSuspended, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
@@ -177,7 +189,13 @@ func (c *UserController) BlockUserById(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusBlocked)
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusBlocked, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})

@@ -32,7 +32,7 @@ func main() {
 	protected.Use(middlewares.AuthMiddleware())
 	{
 
-		protected.POST("/logout", authController.Logout) //POST /logout
+		//protected.POST("/logout", authController.Logout) //POST /logout (non ancora implementato)
 
 		// OPERATORS
 		operators := protected.Group("/operators")
@@ -109,7 +109,7 @@ func main() {
 		// USERS CALLS
 		users := protected.Group("/users")
 		users.Use(
-			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+			middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String(), enums.RoleAgent.String(), enums.RoleAgency.String()),
 			middlewares.SetRoleMiddleware(enums.RoleUser.String()),
 		)
 		{
