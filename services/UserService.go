@@ -17,6 +17,7 @@ type UserService interface {
 	GetAllByRole(role string) ([]user.UserResponse, error)
 	GetUserByIDAndRole(id uint, targetRole string, actor policies.AuthContext) (*user.UserResponse, error)
 	CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
+	UpdateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	ChangeStatus(userID uint, targetRole string, status enums.Status, actor policies.AuthContext) (*user.UserResponse, error)
 	DeleteUser(id string) error
 }
@@ -106,6 +107,52 @@ func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthC
 	}
 
 	response := mappers.ToUserResponse(newUser)
+	return &response, nil
+}
+
+func (s *userService) UpdateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error) {
+	if request == nil || request.Id == nil {
+		return nil, errors.New("richiesta di aggiornamento non valida: ID mancante")
+	}
+
+	existing, err := s.repo.GetByIDAndRole(*request.Id, request.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.policy.Update(actor, existing); err != nil {
+		return nil, err
+	}
+
+	if request.FirstName != "" || existing.FirstName != request.FirstName {
+		existing.FirstName = request.FirstName
+	}
+	if request.LastName != "" || existing.LastName != request.LastName {
+		existing.LastName = request.LastName
+	}
+	if request.Username != "" || existing.Username != request.Username {
+		existing.Username = request.Username
+	}
+	if request.Email != "" || existing.Email != request.Email {
+		existing.Email = request.Email
+	}
+	if request.ForeignId != nil || existing.ForeignId != request.ForeignId {
+		existing.ForeignId = request.ForeignId
+	}
+
+	if request.Password != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		existing.Password = string(hashed)
+	}
+
+	if err := s.repo.Update(existing); err != nil {
+		return nil, err
+	}
+
+	response := mappers.ToUserResponse(existing)
 	return &response, nil
 }
 

@@ -4,18 +4,24 @@ import (
 	"example/go_backoffice/enums"
 	"example/go_backoffice/models"
 	"example/go_backoffice/repositories"
+	"slices"
 )
 
 type UpdatePolicy struct {
 	scopeRepo repositories.ScopeRepo
+	userRepo  repositories.UserRepo
 }
 
-func NewUpdatePolicy(scopeRepo repositories.ScopeRepo) *UpdatePolicy {
-	return &UpdatePolicy{scopeRepo: scopeRepo}
+func NewUpdatePolicy(scopeRepo repositories.ScopeRepo, userRepo repositories.UserRepo) *UpdatePolicy {
+	return &UpdatePolicy{scopeRepo: scopeRepo, userRepo: userRepo}
 }
 
 // Check ritorna nil se actor può modificare target, ErrForbidden altrimenti.
 func (p *UpdatePolicy) Check(actor AuthContext, target *models.User) error {
+	if actor.UserID == target.ID {
+		return nil
+	}
+
 	switch actor.Role {
 	case enums.RoleAdmin.String():
 		return nil
@@ -31,11 +37,80 @@ func (p *UpdatePolicy) Check(actor AuthContext, target *models.User) error {
 }
 
 func (p *UpdatePolicy) updateAsOperator(actor AuthContext, target *models.User) error {
-	// TODO: logica di business per OPERATOR
+	switch target.Role {
+	case enums.RoleOperator:
+		return ErrForbidden
+
+	case enums.RoleAgent:
+		assigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, target.ID)
+		if err != nil {
+			return err
+		}
+		if !assigned {
+			return ErrForbidden
+		}
+		return nil
+
+	case enums.RoleAgency:
+		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, target.ID)
+		if err != nil {
+			return err
+		}
+		if !assigned {
+			return ErrForbidden
+		}
+		return nil
+
+	case enums.RoleUser:
+		if target.ForeignId == nil {
+			return ErrMissingRelation
+		}
+		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignId)
+		if err != nil {
+			return err
+		}
+		if !assigned {
+			return ErrForbidden
+		}
+		return nil
+	}
 	return ErrNotImplemented
 }
 
 func (p *UpdatePolicy) updateAsAgent(actor AuthContext, target *models.User) error {
-	// TODO: logica di business per AGENT
-	return ErrNotImplemented
+	switch target.Role {
+	case enums.RoleOperator:
+		return ErrForbidden
+
+	case enums.RoleAgent, enums.RoleAgency:
+		if target.ForeignId == nil {
+			return ErrForbidden
+		}
+		children, err := p.scopeRepo.NodeChildrenAgentIds(actor.UserID)
+		if err != nil {
+			return err
+		}
+		if actor.UserID != *target.ForeignId && !slices.Contains(children, *target.ForeignId) {
+			return ErrForbidden
+		}
+		return nil
+
+	case enums.RoleUser:
+		agency, err := p.userRepo.GetByIDAndRole(*target.ForeignId, enums.RoleAgency.String())
+		if err != nil {
+			return err
+		}
+
+		children, err := p.scopeRepo.NodeChildrenAgentIds(*agency.ForeignId)
+		if err != nil {
+			return err
+		}
+
+		if !slices.Contains(children, *target.ForeignId) {
+			return ErrForbidden
+		}
+		return nil
+	}
+
+	return ErrUnknownRole
 }

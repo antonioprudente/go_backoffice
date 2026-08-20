@@ -54,6 +54,35 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, response)
 }
 
+func (c *UserController) UpdateUser(ctx *gin.Context) {
+	var updateUserRequest user.UserRequest
+	role, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+	updateUserRequest.Role = role.(string)
+
+	// validazione request
+	if err := ctx.ShouldBindJSON(&updateUserRequest); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati utente non validi"})
+		return
+	}
+
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.service.UpdateUser(&updateUserRequest, actor)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusCreated, response)
+}
+
 func (c *UserController) GetUsers(ctx *gin.Context) {
 	// ottiene il targetRole dal middleware
 	roleVal, exists := ctx.Get("targetRole")
@@ -96,6 +125,21 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	}
 
 	response, err := c.service.GetUserByIDAndRole(uid, targetRole.(string), actor)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, response)
+}
+
+func (c *UserController) GetPersonalProfile(ctx *gin.Context) {
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.service.GetUserByIDAndRole(actor.UserID, actor.Role, actor)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

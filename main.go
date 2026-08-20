@@ -34,6 +34,8 @@ func main() {
 
 		//protected.POST("/logout", authController.Logout) //POST /logout (non ancora implementato)
 
+		protected.GET("/profile", userController.GetPersonalProfile)
+
 		// OPERATORS
 		operators := protected.Group("/operators")
 		{
@@ -44,8 +46,8 @@ func main() {
 				middlewares.SetRoleMiddleware(enums.RoleOperator.String()),
 			)
 			{
-				adminOnly.POST("", userController.CreateUser)
-				adminOnly.GET("", userController.GetUsers)
+				adminOnly.POST("", userController.CreateUser)                   // POST /operators
+				adminOnly.GET("", userController.GetUsers)                      // GET /operators
 				adminOnly.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
 				adminOnly.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
 				adminOnly.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block

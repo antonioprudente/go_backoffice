@@ -17,6 +17,7 @@ type UserRepo interface {
 	GetByUsername(username string) (*models.User, error)
 	GetByEmail(email string) (*models.User, error)
 	Create(user *models.User) error
+	Update(user *models.User) error
 	UpdateStatusByIdAndRole(id uint, role string, status string) (*models.User, error)
 	Delete(id string) error
 
@@ -68,6 +69,10 @@ func (r *userRepo) GetByEmail(email string) (*models.User, error) {
 
 func (r *userRepo) Create(user *models.User) error {
 	return r.db.Create(user).Error
+}
+
+func (r *userRepo) Update(user *models.User) error {
+	return r.db.Save(user).Error
 }
 
 // Implementazione
