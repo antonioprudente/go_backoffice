@@ -18,6 +18,7 @@ type AgentNodeRepo interface {
 	GetFilteredTreeByAgent(userID uint) ([]*models.AgentNode, error)
 	GetFilteredTreeByOperator(userID uint) ([]*models.AgentNode, error)
 	GetNodeByAgentID(agentID uint) (*models.AgentNode, error)
+	DeleteAgentNodeAndAgentByAgentID(agentID uint) error
 }
 
 type agentNodeRepo struct {
@@ -271,4 +272,49 @@ func (r *agentNodeRepo) GetNodeByAgentID(agentID uint) (*models.AgentNode, error
 		return nil, err
 	}
 	return &node, nil
+}
+
+func (r *agentNodeRepo) DeleteAgentNodeAndAgentByAgentID(agentID uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var node models.AgentNode
+		if err := tx.Where("agent_id = ?", agentID).First(&node).Error; err != nil {
+			return err
+		}
+
+		var subtreeAgentIDs []uint
+		if err := tx.Model(&models.AgentNode{}).
+			Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
+			Pluck("agent_id", &subtreeAgentIDs).Error; err != nil {
+			return err
+		}
+
+		if len(subtreeAgentIDs) > 0 {
+			var agencyIDs []uint
+			if err := tx.Model(&models.User{}).
+				Where("role = ? AND foreign_id IN ?", enums.RoleAgency, subtreeAgentIDs).
+				Pluck("id", &agencyIDs).Error; err != nil {
+				return err
+			}
+
+			if len(agencyIDs) > 0 {
+				if err := tx.Where("role = ? AND foreign_id IN ?", enums.RoleUser, agencyIDs).
+					Delete(&models.User{}).Error; err != nil {
+					return err
+				}
+				if err := tx.Where("id IN ?", agencyIDs).
+					Delete(&models.User{}).Error; err != nil {
+					return err
+				}
+			}
+
+			// FIX: id, non foreign_id
+			if err := tx.Where("role = ? AND id IN ?", enums.RoleAgent, subtreeAgentIDs).
+				Delete(&models.User{}).Error; err != nil {
+				return err
+			}
+		}
+
+		return tx.Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
+			Delete(&models.AgentNode{}).Error
+	})
 }

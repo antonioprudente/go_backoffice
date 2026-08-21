@@ -95,7 +95,7 @@ func main() {
 			agents.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
 			agents.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
 			agents.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
-			agents.DELETE("/:id", userController.DeleteUser)             // DELETE /agents/:id
+			agents.DELETE("/:id", agentController.DeleteAgent)           // DELETE /agents/:id
 		}
 
 		// AGENCIES CALLS

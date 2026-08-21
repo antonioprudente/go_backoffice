@@ -34,7 +34,7 @@ func InitAgentController(db *gorm.DB) *controllers.AgentController {
 	userService := services.NewUserService(db, userRepo, scopeRepo, agencyOperatorRepo, userPolicy)
 	agentNodeRepo := repositories.NewAgentNodeRepository(db)
 	agentOperatorRepo := repositories.NewAgentOperatorRepository(db)
-	agentNodeService := services.NewAgentNodeService(db, agentNodeRepo, agentOperatorRepo, scopeRepo, userPolicy)
+	agentNodeService := services.NewAgentNodeService(db, agentNodeRepo, agentOperatorRepo, scopeRepo, userRepo, userPolicy)
 	agentController := controllers.NewAgentController(userService, agentNodeService)
 	return agentController
 }

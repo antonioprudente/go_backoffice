@@ -17,6 +17,7 @@ import (
 type AgentNodeService interface {
 	CreateNode(request *user.UserRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error)
 	GetTree(actor policies.AuthContext) ([]*agent_node.AgentNodeResponse, error)
+	DeleteNode(agentID uint, actor policies.AuthContext) error
 }
 
 type agentNodeService struct {
@@ -24,6 +25,7 @@ type agentNodeService struct {
 	repo        repositories.AgentNodeRepo
 	agentOpRepo repositories.AgentOperatorRepo
 	scopeRepo   repositories.ScopeRepo
+	userRepo    repositories.UserRepo
 	policy      policies.UserPolicy
 }
 
@@ -32,14 +34,12 @@ func NewAgentNodeService(
 	repo repositories.AgentNodeRepo,
 	agentOpRepo repositories.AgentOperatorRepo,
 	scopeRepo repositories.ScopeRepo,
+	userRepo repositories.UserRepo,
 	policy policies.UserPolicy,
 ) AgentNodeService {
 	return &agentNodeService{
-		db:          db,
-		repo:        repo,
-		agentOpRepo: agentOpRepo,
-		scopeRepo:   scopeRepo,
-		policy:      policy,
+		db: db, repo: repo, agentOpRepo: agentOpRepo,
+		scopeRepo: scopeRepo, userRepo: userRepo, policy: policy,
 	}
 }
 
@@ -160,4 +160,17 @@ func filterChildren(node *models.AgentNode, allowed map[uint]bool) {
 		}
 	}
 	node.Children = kept
+}
+
+func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) error {
+	target, err := s.userRepo.GetByIDAndRole(agentID, enums.RoleAgent.String())
+	if err != nil {
+		return err
+	}
+
+	if err := s.policy.Delete(actor, target); err != nil {
+		return err
+	}
+
+	return s.repo.DeleteAgentNodeAndAgentByAgentID(agentID)
 }
