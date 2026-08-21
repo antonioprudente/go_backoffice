@@ -83,9 +83,14 @@ func (p *DeletePolicy) deleteAsAgent(actor AuthContext, target *models.User) err
 
 	case enums.RoleAgent, enums.RoleAgency:
 		if target.ForeignId == nil {
-			return ErrForbidden
+			if target.Role == enums.RoleAgent {
+				return ErrForbidden
+			}
+			if target.Role == enums.RoleAgency {
+				return ErrMissingRelation
+			}
 		}
-		children, err := p.scopeRepo.NodeChildrenAgentIds(actor.UserID)
+		children, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(actor.UserID)
 		if err != nil {
 			return err
 		}
@@ -99,12 +104,10 @@ func (p *DeletePolicy) deleteAsAgent(actor AuthContext, target *models.User) err
 		if err != nil {
 			return err
 		}
-
-		children, err := p.scopeRepo.NodeChildrenAgentIds(*agency.ForeignId)
+		children, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(*agency.ForeignId)
 		if err != nil {
 			return err
 		}
-
 		if !slices.Contains(children, *target.ForeignId) {
 			return ErrForbidden
 		}

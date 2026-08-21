@@ -7,14 +7,11 @@ import (
 )
 
 type ScopeRepo interface {
-	AssignAgentToOperator(operatorID, agentID uint) error
-	AssignAgencyToOperator(operatorID, agencyID uint) error
 	IsAgentAssignedToOperator(operatorID, agentID uint) (bool, error)
-	IsAgencyAssignedToOperator(operatorID, agencyID uint) (bool, error)
+	IsAgencyAssignedToOperator(operatorID uint, agencyID uint) (bool, error)
 	AssignedAgentIDs(operatorID uint) ([]uint, error)
 	AssignedAgencyIDs(operatorID uint) ([]uint, error)
-	GetAgentIDByNodeID(nodeID uint) (uint, error)
-	NodeChildrenAgentIds(agentID uint) ([]uint, error)
+	NodeChildrenAndSelfAgentIds(agentID uint) ([]uint, error)
 }
 
 type scopeRepo struct {
@@ -25,14 +22,6 @@ func NewScopeRepository(db *gorm.DB) ScopeRepo {
 	return &scopeRepo{db: db}
 }
 
-func (r *scopeRepo) AssignAgentToOperator(operatorID, agentID uint) error {
-	return r.db.Create(&models.AgentOperator{OperatorID: operatorID, AgentID: agentID}).Error
-}
-
-func (r *scopeRepo) AssignAgencyToOperator(operatorID, agencyID uint) error {
-	return r.db.Create(&models.AgencyOperator{OperatorID: operatorID, AgencyID: agencyID}).Error
-}
-
 func (r *scopeRepo) IsAgentAssignedToOperator(operatorID, agentID uint) (bool, error) {
 	var count int64
 	err := r.db.Model(&models.AgentOperator{}).
@@ -41,7 +30,7 @@ func (r *scopeRepo) IsAgentAssignedToOperator(operatorID, agentID uint) (bool, e
 	return count > 0, err
 }
 
-func (r *scopeRepo) IsAgencyAssignedToOperator(operatorID, agencyID uint) (bool, error) {
+func (r *scopeRepo) IsAgencyAssignedToOperator(operatorID uint, agencyID uint) (bool, error) {
 	var count int64
 	err := r.db.Model(&models.AgencyOperator{}).
 		Where("operator_id = ? AND agency_id = ?", operatorID, agencyID).
@@ -65,15 +54,7 @@ func (r *scopeRepo) AssignedAgencyIDs(operatorID uint) ([]uint, error) {
 	return ids, err
 }
 
-func (r *scopeRepo) GetAgentIDByNodeID(nodeID uint) (uint, error) {
-	var node models.AgentNode
-	if err := r.db.Select("agent_id").First(&node, nodeID).Error; err != nil {
-		return 0, err
-	}
-	return node.AgentID, nil
-}
-
-func (r *scopeRepo) NodeChildrenAgentIds(agentID uint) ([]uint, error) {
+func (r *scopeRepo) NodeChildrenAndSelfAgentIds(agentID uint) ([]uint, error) {
 	var node models.AgentNode
 	if err := r.db.Where("agent_id = ?", agentID).First(&node).Error; err != nil {
 		return nil, err
@@ -81,7 +62,7 @@ func (r *scopeRepo) NodeChildrenAgentIds(agentID uint) ([]uint, error) {
 
 	var children []uint
 	err := r.db.Model(&models.AgentNode{}).
-		Where("lft > ? AND rgt < ?", node.Lft, node.Rgt).
+		Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
 		Pluck("agent_id", &children).Error
 	if err != nil {
 		return nil, err

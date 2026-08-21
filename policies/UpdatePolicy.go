@@ -84,9 +84,14 @@ func (p *UpdatePolicy) updateAsAgent(actor AuthContext, target *models.User) err
 
 	case enums.RoleAgent, enums.RoleAgency:
 		if target.ForeignId == nil {
-			return ErrForbidden
+			if target.Role == enums.RoleAgent {
+				return ErrForbidden
+			}
+			if target.Role == enums.RoleAgency {
+				return ErrMissingRelation
+			}
 		}
-		children, err := p.scopeRepo.NodeChildrenAgentIds(actor.UserID)
+		children, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(actor.UserID)
 		if err != nil {
 			return err
 		}
@@ -100,13 +105,11 @@ func (p *UpdatePolicy) updateAsAgent(actor AuthContext, target *models.User) err
 		if err != nil {
 			return err
 		}
-
-		children, err := p.scopeRepo.NodeChildrenAgentIds(*agency.ForeignId)
+		children, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(actor.UserID)
 		if err != nil {
 			return err
 		}
-
-		if !slices.Contains(children, *target.ForeignId) {
+		if !slices.Contains(children, *agency.ForeignId) {
 			return ErrForbidden
 		}
 		return nil

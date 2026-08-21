@@ -70,7 +70,15 @@ func (p *CreatePolicy) createAsAgent(actor AuthContext, target *models.User) err
 		return ErrForbidden
 
 	case enums.RoleAgent, enums.RoleAgency:
-		children, err := p.scopeRepo.NodeChildrenAgentIds(actor.UserID)
+		if target.ForeignId == nil {
+			if target.Role == enums.RoleAgent {
+				return ErrForbidden
+			}
+			if target.Role == enums.RoleAgency {
+				return ErrMissingRelation
+			}
+		}
+		children, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(actor.UserID)
 		if err != nil {
 			return err
 		}
@@ -85,12 +93,12 @@ func (p *CreatePolicy) createAsAgent(actor AuthContext, target *models.User) err
 			return err
 		}
 
-		children, err := p.scopeRepo.NodeChildrenAgentIds(*agency.ForeignId)
+		children, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(actor.UserID)
 		if err != nil {
 			return err
 		}
 
-		if !slices.Contains(children, *target.ForeignId) {
+		if !slices.Contains(children, *agency.ForeignId) {
 			return ErrForbidden
 		}
 		return nil

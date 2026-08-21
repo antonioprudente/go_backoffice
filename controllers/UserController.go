@@ -63,6 +63,14 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 }
 
 func (c *UserController) UpdateUser(ctx *gin.Context) {
+	id := ctx.Param("id")
+	uid64, err := strconv.ParseUint(id, 10, 0)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID non valido"})
+		return
+	}
+	uid := uint(uid64)
+
 	var updateUserRequest user.UserRequest
 	role, exists := ctx.Get("targetRole")
 	if !exists {
@@ -83,7 +91,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.service.UpdateUser(&updateUserRequest, actor)
+	response, err := c.service.UpdateUser(uid, &updateUserRequest, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
@@ -96,7 +104,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusCreated, response)
+	ctx.JSON(http.StatusOK, response)
 }
 
 func (c *UserController) GetUsers(ctx *gin.Context) {
@@ -296,6 +304,7 @@ func (c *UserController) BlockUserById(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, response)
 }
+
 func (c *UserController) DeleteUser(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	parsedID, err := strconv.ParseUint(idStr, 10, 64)

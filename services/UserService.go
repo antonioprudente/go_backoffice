@@ -17,7 +17,7 @@ type UserService interface {
 	GetAllByRole(role string) ([]user.UserResponse, error)
 	GetUserByIDAndRole(id uint, targetRole string, actor policies.AuthContext) (*user.UserResponse, error)
 	CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
-	UpdateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
+	UpdateUser(id uint, request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	ChangeStatus(userID uint, targetRole string, status enums.Status, actor policies.AuthContext) (*user.UserResponse, error)
 	DeleteUserByIdAndRole(id uint, targetRole string, actor policies.AuthContext) error
 }
@@ -110,12 +110,8 @@ func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthC
 	return &response, nil
 }
 
-func (s *userService) UpdateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error) {
-	if request == nil || request.Id == nil {
-		return nil, errors.New("richiesta di aggiornamento non valida: ID mancante")
-	}
-
-	existing, err := s.repo.GetByIDAndRole(*request.Id, request.Role)
+func (s *userService) UpdateUser(id uint, request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error) {
+	existing, err := s.repo.GetByIDAndRole(id, request.Role)
 	if err != nil {
 		return nil, err
 	}

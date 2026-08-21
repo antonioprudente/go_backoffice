@@ -19,10 +19,6 @@ func ToUserModel(req *user.UserRequest) *models.User {
 		Password:  req.Password,
 	}
 
-	if req.Id != nil {
-		model.ID = *req.Id
-	}
-
 	if req.ForeignId != nil {
 		model.ForeignId = req.ForeignId
 	}

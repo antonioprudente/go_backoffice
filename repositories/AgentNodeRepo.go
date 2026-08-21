@@ -13,18 +13,11 @@ import (
 type AgentNodeRepo interface {
 	WithTx(tx *gorm.DB) AgentNodeRepo
 
-	GetParentIdByAgentId(agentId uint) (*uint, error)
 	Create(nodeModel *models.AgentNode) error
-	GetAncestors(id *uint) ([]models.AgentNode, error)
-	GetDescendants(id *uint) ([]models.AgentNode, error)
 	GetTrees() ([]*models.AgentNode, error)
 	GetFilteredTreeByAgent(userID uint) ([]*models.AgentNode, error)
 	GetFilteredTreeByOperator(userID uint) ([]*models.AgentNode, error)
-
 	GetNodeByAgentID(agentID uint) (*models.AgentNode, error)
-	IsDescendantOrSelf(ancestorAgentID uint, nodeID uint) (bool, error)
-	IsAgentDescendantOrSelf(ancestorAgentID, candidateAgentID uint) (bool, error)
-	GetDescendantAgentIDs(ancestorAgentID uint) ([]uint, error)
 }
 
 type agentNodeRepo struct {
@@ -110,42 +103,6 @@ func (r *agentNodeRepo) Create(nodeModel *models.AgentNode) error {
 
 		return tx.Omit("Agent", "Parent").Create(nodeModel).Error
 	})
-}
-
-func (r *agentNodeRepo) GetAncestors(id *uint) ([]models.AgentNode, error) {
-	if id == nil {
-		return nil, fmt.Errorf("id non può essere nil")
-	}
-
-	var child models.AgentNode
-	if err := r.db.First(&child, *id).Error; err != nil {
-		return nil, err
-	}
-
-	var ancestors []models.AgentNode
-	err := r.db.Where("lft < ? AND rgt > ?", child.Lft, child.Rgt).
-		Order("lft ASC").
-		Find(&ancestors).Error
-
-	return ancestors, err
-}
-
-func (r *agentNodeRepo) GetDescendants(id *uint) ([]models.AgentNode, error) {
-	if id == nil {
-		return nil, fmt.Errorf("id non può essere nil")
-	}
-
-	var parent models.AgentNode
-	if err := r.db.First(&parent, *id).Error; err != nil {
-		return nil, err
-	}
-
-	var descendants []models.AgentNode
-	err := r.db.Where("lft > ? AND rgt < ?", parent.Lft, parent.Rgt).
-		Order("lft ASC").
-		Find(&descendants).Error
-
-	return descendants, err
 }
 
 // GetTrees recupera l'intero albero (nessuna restrizione su agenti/agenzie).
@@ -314,54 +271,4 @@ func (r *agentNodeRepo) GetNodeByAgentID(agentID uint) (*models.AgentNode, error
 		return nil, err
 	}
 	return &node, nil
-}
-
-// IsDescendantOrSelf verifica se il nodo con ID = nodeID è lo stesso nodo dell'agente
-// ancestorAgentID, oppure un suo discendente nel nested set.
-// Usato per validare il ParentId quando un AGENT crea un nuovo AgentNode.
-func (r *agentNodeRepo) IsDescendantOrSelf(ancestorAgentID uint, nodeID uint) (bool, error) {
-	var count int64
-	err := r.db.Model(&models.AgentNode{}).
-		Where(`id = ? AND (
-			id = (SELECT id FROM agent_nodes WHERE agent_id = ?)
-			OR (lft > (SELECT lft FROM agent_nodes WHERE agent_id = ?)
-			    AND rgt < (SELECT rgt FROM agent_nodes WHERE agent_id = ?))
-		)`, nodeID, ancestorAgentID, ancestorAgentID, ancestorAgentID).
-		Count(&count).Error
-	return count > 0, err
-}
-
-// IsAgentDescendantOrSelf come sopra, ma prendendo in input due AgentID (User.ID)
-// invece di un AgentNode.ID. Usato per validare il ForeignId quando un AGENT
-// crea una nuova AGENCY collegata a un agente del proprio sottoalbero.
-func (r *agentNodeRepo) IsAgentDescendantOrSelf(ancestorAgentID, candidateAgentID uint) (bool, error) {
-	if ancestorAgentID == candidateAgentID {
-		return true, nil
-	}
-
-	var count int64
-	err := r.db.Raw(`
-		SELECT COUNT(*) FROM agent_nodes candidate
-		JOIN agent_nodes ancestor ON ancestor.agent_id = ?
-		WHERE candidate.agent_id = ?
-		  AND candidate.lft > ancestor.lft
-		  AND candidate.rgt < ancestor.rgt
-	`, ancestorAgentID, candidateAgentID).Scan(&count).Error
-
-	return count > 0, err
-}
-
-// GetDescendantAgentIDs ritorna gli AgentID (User.ID) di tutti i nodi del sottoalbero
-// dell'agente indicato, incluso se stesso. Utile per filtrare liste (agenti/agenzie visibili).
-func (r *agentNodeRepo) GetDescendantAgentIDs(ancestorAgentID uint) ([]uint, error) {
-	ancestorNode, err := r.GetNodeByAgentID(ancestorAgentID)
-	if err != nil {
-		return nil, err
-	}
-
-	var ids []uint
-	err = r.db.Model(&models.AgentNode{}).
-		Where("(lft > ? AND rgt < ?) OR id = ?", ancestorNode.Lft, ancestorNode.Rgt, ancestorNode.ID).
-		Pluck("agent_id", &ids).Error
-	return ids, err
 }

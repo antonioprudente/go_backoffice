@@ -62,7 +62,7 @@ func main() {
 			)
 			{
 				selfAccess.GET("/:id", userController.GetUserByID) // GET /operators/:id
-				selfAccess.PUT("", userController.UpdateUser)      // PUT /operators
+				selfAccess.PUT("/:id", userController.UpdateUser)  // PUT /operators
 			}
 		}
 
@@ -91,7 +91,7 @@ func main() {
 			agents.GET("", userController.GetUsers)                      // GET /agents
 			agents.GET("/:id", userController.GetUserByID)               // GET /agents/:id
 			agents.GET("/tree", agentController.GetFilteredTree)         // GET /agents/tree
-			agents.PUT("", userController.UpdateUser)                    // PUT /agents
+			agents.PUT("/:id", userController.UpdateUser)                // PUT /agents
 			agents.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
 			agents.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
 			agents.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
@@ -108,7 +108,7 @@ func main() {
 			agencies.POST("", userController.CreateUser)                   // POST /agencies
 			agencies.GET("", userController.GetUsers)                      // GET /agencies
 			agencies.GET("/:id", userController.GetUserByID)               // GET /agencies/:id
-			agencies.PUT("", userController.UpdateUser)                    // PUT /agencies
+			agencies.PUT("/:id", userController.UpdateUser)                // PUT /agencies
 			agencies.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
 			agencies.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
 			agencies.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
@@ -125,7 +125,7 @@ func main() {
 			users.POST("", userController.CreateUser)                   // POST /users
 			users.GET("", userController.GetUsers)                      // GET /users
 			users.GET("/:id", userController.GetUserByID)               // GET /users/:id
-			users.PUT("", userController.UpdateUser)                    // PUT /users
+			users.PUT("/:id", userController.UpdateUser)                // PUT /users
 			users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
 			users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
 			users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
