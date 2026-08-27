@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"example/go_backoffice/dto/agent_node"
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/middlewares"
 	"example/go_backoffice/policies"
@@ -132,4 +133,32 @@ func (c *AgentController) RestoreAgent(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"message": "Agente ripristinato con successo"})
+}
+
+func (c *AgentController) MoveAgent(ctx *gin.Context) {
+	var request agent_node.MoveNodeRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati utente non validi"})
+		return
+	}
+
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+	}
+
+	err = c.nodeService.MoveNode(request, actor)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"message": "Agente spostato con successo"})
 }

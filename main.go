@@ -86,12 +86,12 @@ func main() {
 			middlewares.SetRoleMiddleware(enums.RoleAgent.String()),
 		)
 		{
-			agents.POST("", agentController.CreateAgentNode) // POST /agents
-
+			agents.POST("", agentController.CreateAgentNode)             // POST /agents
 			agents.GET("", userController.GetUsers)                      // GET /agents
 			agents.GET("/:id", userController.GetUserByID)               // GET /agents/:id
 			agents.GET("/tree", agentController.GetFilteredTree)         // GET /agents/tree
 			agents.PUT("/:id", userController.UpdateUser)                // PUT /agents
+			agents.PATCH("/move", agentController.MoveAgent)             // PATCH /agents/move
 			agents.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /agents/:id/active
 			agents.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /agents/:id/suspend
 			agents.PATCH("/:id/block", userController.BlockUserById)     // PATCH /agents/:id/block

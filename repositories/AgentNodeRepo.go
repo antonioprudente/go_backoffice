@@ -20,6 +20,7 @@ type AgentNodeRepo interface {
 	GetNodeByAgentID(agentID uint) (*models.AgentNode, error)
 	DeleteAgentNodeAndAgentByAgentID(agentID uint) error
 	RestoreAgentSubtree(rootAgentID uint) error
+	MoveNode(agentID uint, foreignID *uint) error
 }
 
 type agentNodeRepo struct {
@@ -459,4 +460,176 @@ func (r *agentNodeRepo) RestoreAgentSubtree(rootAgentID uint) error {
 
 		return nil
 	})
+}
+
+// MoveNode sposta il nodo identificato da agentID (e tutto il suo sottoalbero).
+// Se foreignID è nil, il nodo diventa una nuova radice (root); altrimenti viene
+// spostato come ultimo figlio del nodo il cui agent_id è *foreignID.
+// Aggiorna lft/rgt di tutta la tabella secondo le regole del nested set
+// e il ParentID del nodo spostato.
+func (r *agentNodeRepo) MoveNode(agentID uint, foreignID *uint) error {
+	if foreignID != nil && agentID == *foreignID {
+		return fmt.Errorf("impossibile spostare il nodo %d sotto se stesso", agentID)
+	}
+
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var node models.AgentNode
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("agent_id = ?", agentID).
+			First(&node).Error; err != nil {
+			return err
+		}
+
+		var newParentNode *models.AgentNode
+		if foreignID != nil {
+			var np models.AgentNode
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("agent_id = ?", *foreignID).
+				First(&np).Error; err != nil {
+				return err
+			}
+			if np.Lft >= node.Lft && np.Rgt <= node.Rgt {
+				return fmt.Errorf("impossibile spostare il nodo %d sotto se stesso o un suo discendente (foreign_id %d)", agentID, *foreignID)
+			}
+			newParentNode = &np
+		}
+
+		// Cattura l'intero sottoalbero (radice + discendenti), ordinato per lft
+		// così l'ordine relativo tra fratelli viene preservato al reinserimento
+		var subtree []models.AgentNode
+		if err := tx.Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
+			Order("lft ASC").
+			Find(&subtree).Error; err != nil {
+			return err
+		}
+
+		byID := make(map[uint]*models.AgentNode, len(subtree))
+		for i := range subtree {
+			byID[subtree[i].ID] = &subtree[i]
+		}
+		// Per ogni discendente (radice esclusa), l'AgentID del suo genitore
+		// ALL'INTERNO del sottoalbero
+		parentAgentIDOf := make(map[uint]uint, len(subtree))
+		for i := range subtree {
+			n := &subtree[i]
+			if n.ID == node.ID {
+				continue
+			}
+			parentAgentIDOf[n.AgentID] = byID[*n.ParentID].AgentID
+		}
+
+		// 1) elimina l'intero sottoalbero e richiude il buco
+		if err := r.deleteSubtree(tx, &node); err != nil {
+			return err
+		}
+
+		// 2) reinserisce la radice del sottoalbero sotto la nuova destinazione
+		var newParentNodeID *uint
+		if newParentNode != nil {
+			newParentNodeID = &newParentNode.ID
+		}
+		newRoot, err := r.insertNodeUnderParent(tx, node.AgentID, newParentNodeID)
+		if err != nil {
+			return err
+		}
+
+		// 3) reinserisce ricorsivamente ogni discendente, nello stesso ordine
+		//    relativo originale, sotto il proprio genitore già reinserito
+		newNodeIDByAgentID := map[uint]uint{node.AgentID: newRoot.ID}
+		for _, n := range subtree {
+			if n.ID == node.ID {
+				continue
+			}
+			parentNewID, ok := newNodeIDByAgentID[parentAgentIDOf[n.AgentID]]
+			if !ok {
+				return fmt.Errorf("errore interno: genitore di agent_id %d non ancora reinserito", n.AgentID)
+			}
+			inserted, err := r.insertNodeUnderParent(tx, n.AgentID, &parentNewID)
+			if err != nil {
+				return err
+			}
+			newNodeIDByAgentID[n.AgentID] = inserted.ID
+		}
+
+		return nil
+	})
+}
+
+// insertNodeUnderParent inserisce un AgentNode con AgentID già esistente
+// come ultimo figlio del nodo con ID = parentNodeID (o come nuova root se
+// parentNodeID è nil). È la stessa logica di shift usata in Create(), estratta
+// per essere riusabile anche in fase di reinserimento (UpdateTree).
+func (r *agentNodeRepo) insertNodeUnderParent(tx *gorm.DB, agentID uint, parentNodeID *uint) (*models.AgentNode, error) {
+	nodeModel := &models.AgentNode{AgentID: agentID, ParentID: parentNodeID}
+
+	if parentNodeID == nil {
+		var lastRoot models.AgentNode
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("parent_id IS NULL").
+			Order("rgt DESC").
+			First(&lastRoot).Error
+
+		switch {
+		case err == nil:
+			nodeModel.Lft = lastRoot.Rgt + 1
+			nodeModel.Rgt = nodeModel.Lft + 1
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			nodeModel.Lft = 1
+			nodeModel.Rgt = 2
+		default:
+			return nil, err
+		}
+		if err := tx.Create(nodeModel).Error; err != nil {
+			return nil, err
+		}
+		return nodeModel, nil
+	}
+
+	var parent models.AgentNode
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		First(&parent, *parentNodeID).Error; err != nil {
+		return nil, err
+	}
+	parentRgt := parent.Rgt
+
+	if err := tx.Model(&models.AgentNode{}).
+		Where("rgt >= ? OR lft > ?", parentRgt, parentRgt).
+		Updates(map[string]interface{}{
+			"rgt": gorm.Expr("CASE WHEN rgt >= ? THEN rgt + 2 ELSE rgt END", parentRgt),
+			"lft": gorm.Expr("CASE WHEN lft > ? THEN lft + 2 ELSE lft END", parentRgt),
+		}).Error; err != nil {
+		return nil, err
+	}
+
+	nodeModel.Lft = parentRgt
+	nodeModel.Rgt = parentRgt + 1
+
+	if err := tx.Create(nodeModel).Error; err != nil {
+		return nil, err
+	}
+	return nodeModel, nil
+}
+
+// deleteSubtree rimuove il nodo e tutti i suoi discendenti, richiudendo
+// il buco lasciato nella struttura nested set per il resto dell'albero.
+func (r *agentNodeRepo) deleteSubtree(tx *gorm.DB, node *models.AgentNode) error {
+	width := node.Rgt - node.Lft + 1
+
+	if err := tx.Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
+		Delete(&models.AgentNode{}).Error; err != nil {
+		return err
+	}
+
+	if err := tx.Model(&models.AgentNode{}).
+		Where("rgt > ?", node.Rgt).
+		Update("rgt", gorm.Expr("rgt - ?", width)).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&models.AgentNode{}).
+		Where("lft > ?", node.Rgt).
+		Update("lft", gorm.Expr("lft - ?", width)).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
