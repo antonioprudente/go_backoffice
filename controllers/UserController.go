@@ -305,6 +305,42 @@ func (c *UserController) BlockUserById(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response)
 }
 
+func (c *UserController) ChangeForeignID(ctx *gin.Context) {
+	var request user.ChangeForeignRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati non validi"})
+		return
+	}
+
+	targetRole, exists := ctx.Get("targetRole")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
+		return
+	}
+
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := c.service.ChangeForeignID(request, targetRole.(string), actor)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response)
+}
+
 func (c *UserController) DeleteUser(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	parsedID, err := strconv.ParseUint(idStr, 10, 64)

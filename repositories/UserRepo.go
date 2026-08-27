@@ -19,6 +19,8 @@ type UserRepo interface {
 	Create(user *models.User) error
 	Update(user *models.User) error
 	UpdateStatusByIdAndRole(id uint, role string, status string) (*models.User, error)
+	UpdateForeignID(id uint, role string, foreignID uint) (*models.User, error)
+
 	DeleteByIdAndRole(id uint, role string) error
 
 	GetAllByRoleAndIDs(role string, ids []uint) ([]models.User, error)
@@ -134,4 +136,19 @@ func (r *userRepo) GetAllByRoleAndForeignIDs(role string, foreignIDs []uint) ([]
 	}
 	err := r.db.Where("role = ? AND foreign_id IN ?", role, foreignIDs).Find(&users).Error
 	return users, err
+}
+
+func (r *userRepo) UpdateForeignID(id uint, role string, foreignID uint) (*models.User, error) {
+	result := r.db.Model(&models.User{}).
+		Where("id = ? AND role = ?", id, role).
+		Update("foreign_id", foreignID)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return r.GetByIDAndRole(id, role)
 }

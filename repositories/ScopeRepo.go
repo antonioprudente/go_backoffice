@@ -12,6 +12,7 @@ type ScopeRepo interface {
 	AssignedAgentIDs(operatorID uint) ([]uint, error)
 	AssignedAgencyIDs(operatorID uint) ([]uint, error)
 	NodeChildrenAndSelfAgentIds(agentID uint) ([]uint, error)
+	NodeChildrenAgentIds(agentID uint) ([]uint, error)
 }
 
 type scopeRepo struct {
@@ -63,6 +64,23 @@ func (r *scopeRepo) NodeChildrenAndSelfAgentIds(agentID uint) ([]uint, error) {
 	var children []uint
 	err := r.db.Model(&models.AgentNode{}).
 		Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
+		Pluck("agent_id", &children).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return children, nil
+}
+
+func (r *scopeRepo) NodeChildrenAgentIds(agentID uint) ([]uint, error) {
+	var node models.AgentNode
+	if err := r.db.Where("agent_id = ?", agentID).First(&node).Error; err != nil {
+		return nil, err
+	}
+
+	var children []uint
+	err := r.db.Model(&models.AgentNode{}).
+		Where("lft > ? AND rgt < ?", node.Lft, node.Rgt).
 		Pluck("agent_id", &children).Error
 	if err != nil {
 		return nil, err

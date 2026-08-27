@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"example/go_backoffice/dto/agent_node"
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/middlewares"
 	"example/go_backoffice/policies"
@@ -136,7 +135,7 @@ func (c *AgentController) RestoreAgent(ctx *gin.Context) {
 }
 
 func (c *AgentController) MoveAgent(ctx *gin.Context) {
-	var request agent_node.MoveNodeRequest
+	var request user.ChangeForeignRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati utente non validi"})
 		return
@@ -145,6 +144,7 @@ func (c *AgentController) MoveAgent(ctx *gin.Context) {
 	actor, err := middlewares.ActorFromContext(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
 	}
 
 	err = c.nodeService.MoveNode(request, actor)

@@ -11,6 +11,7 @@ type UserPolicy interface {
 	Update(actor AuthContext, target *models.User) error
 	UpdateStatus(actor AuthContext, target *models.User) error
 	Delete(actor AuthContext, target *models.User) error
+	Move(actor AuthContext, target *models.User, newParent *models.User) error
 }
 
 type userPolicy struct {
@@ -19,6 +20,7 @@ type userPolicy struct {
 	updatePolicy       *UpdatePolicy
 	updateStatusPolicy *UpdateStatusPolicy
 	deletePolicy       *DeletePolicy
+	movePolicy         *MovePolicy
 }
 
 func NewUserPolicy(scopeRepo repositories.ScopeRepo, userRepo repositories.UserRepo) UserPolicy {
@@ -28,6 +30,7 @@ func NewUserPolicy(scopeRepo repositories.ScopeRepo, userRepo repositories.UserR
 		updatePolicy:       NewUpdatePolicy(scopeRepo, userRepo),
 		updateStatusPolicy: NewUpdateStatusPolicy(scopeRepo),
 		deletePolicy:       NewDeletePolicy(scopeRepo, userRepo),
+		movePolicy:         NewMovePolicy(scopeRepo, userRepo),
 	}
 }
 
@@ -49,4 +52,8 @@ func (p *userPolicy) UpdateStatus(actor AuthContext, target *models.User) error 
 
 func (p *userPolicy) Delete(actor AuthContext, target *models.User) error {
 	return p.deletePolicy.Check(actor, target)
+}
+
+func (p *userPolicy) Move(actor AuthContext, target *models.User, newParent *models.User) error {
+	return p.movePolicy.Check(actor, target, newParent)
 }

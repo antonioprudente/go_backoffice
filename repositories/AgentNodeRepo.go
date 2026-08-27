@@ -615,16 +615,21 @@ func (r *agentNodeRepo) insertNodeUnderParent(tx *gorm.DB, agentID uint, parentN
 func (r *agentNodeRepo) deleteSubtree(tx *gorm.DB, node *models.AgentNode) error {
 	width := node.Rgt - node.Lft + 1
 
+	// 1. Elimina i nodi in ordine decrescente di LFT (prima le foglie/figli, poi i padri)
 	if err := tx.Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
+		Order("lft DESC").
 		Delete(&models.AgentNode{}).Error; err != nil {
 		return err
 	}
 
+	// 2. Aggiorna i valori RGT dei nodi rimanenti
 	if err := tx.Model(&models.AgentNode{}).
 		Where("rgt > ?", node.Rgt).
 		Update("rgt", gorm.Expr("rgt - ?", width)).Error; err != nil {
 		return err
 	}
+
+	// 3. Aggiorna i valori LFT dei nodi rimanenti
 	if err := tx.Model(&models.AgentNode{}).
 		Where("lft > ?", node.Rgt).
 		Update("lft", gorm.Expr("lft - ?", width)).Error; err != nil {

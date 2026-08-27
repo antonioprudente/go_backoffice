@@ -19,6 +19,7 @@ type UserService interface {
 	CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	UpdateUser(id uint, request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	ChangeStatus(userID uint, targetRole string, status enums.Status, actor policies.AuthContext) (*user.UserResponse, error)
+	ChangeForeignID(request user.ChangeForeignRequest, targetRole string, actor policies.AuthContext) (*user.UserResponse, error)
 	DeleteUserByIdAndRole(id uint, targetRole string, actor policies.AuthContext) error
 }
 
@@ -168,6 +169,37 @@ func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.
 		return nil, err
 	}
 
+	response := mappers.ToUserResponse(updated)
+	return &response, nil
+}
+
+func (s *userService) ChangeForeignID(request user.ChangeForeignRequest, targetRole string, actor policies.AuthContext) (*user.UserResponse, error) {
+	target, err := s.repo.GetByIDAndRole(request.UserID, targetRole)
+	if err != nil {
+		return nil, err
+	}
+
+	parentRole := enums.RoleUser.String()
+	if targetRole == enums.RoleAgency.String() {
+		parentRole = enums.RoleAgent.String()
+	}
+	if targetRole == enums.RoleUser.String() {
+		parentRole = enums.RoleAgency.String()
+	}
+
+	newParent, err := s.repo.GetByIDAndRole(*request.TargetID, parentRole)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.policy.Move(actor, target, newParent); err != nil {
+		return nil, err
+	}
+
+	updated, err := s.repo.UpdateForeignID(request.UserID, targetRole, *request.TargetID)
+	if err != nil {
+		return nil, err
+	}
 	response := mappers.ToUserResponse(updated)
 	return &response, nil
 }

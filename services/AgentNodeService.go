@@ -19,7 +19,7 @@ type AgentNodeService interface {
 	GetTree(actor policies.AuthContext) ([]*agent_node.AgentNodeResponse, error)
 	DeleteNode(agentID uint, actor policies.AuthContext) error
 	RestoreNode(agentID uint, actor policies.AuthContext) error
-	MoveNode(request agent_node.MoveNodeRequest, actor policies.AuthContext) error
+	MoveNode(request user.ChangeForeignRequest, actor policies.AuthContext) error
 }
 
 type agentNodeService struct {
@@ -178,17 +178,24 @@ func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) 
 }
 
 func (s *agentNodeService) RestoreNode(agentID uint, actor policies.AuthContext) error {
-	if actor.Role != enums.RoleAdmin.String() {
-		return nil
-	}
 
 	return s.repo.RestoreAgentSubtree(agentID)
 }
 
-func (s *agentNodeService) MoveNode(request agent_node.MoveNodeRequest, actor policies.AuthContext) error {
-	if actor.Role != enums.RoleAdmin.String() {
-		return nil
+func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor policies.AuthContext) error {
+	target, err := s.userRepo.GetByIDAndRole(request.UserID, enums.RoleAgent.String())
+	if err != nil {
+		return err
 	}
 
-	return s.repo.MoveNode(request.AgentID, request.TargetID)
+	newParent, err := s.userRepo.GetByIDAndRole(request.UserID, enums.RoleAgent.String())
+	if err != nil {
+		return err
+	}
+
+	if err := s.policy.Move(actor, target, newParent); err != nil {
+		return err
+	}
+
+	return s.repo.MoveNode(request.UserID, request.TargetID)
 }
