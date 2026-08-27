@@ -19,6 +19,7 @@ type AgentNodeRepo interface {
 	GetFilteredTreeByOperator(userID uint) ([]*models.AgentNode, error)
 	GetNodeByAgentID(agentID uint) (*models.AgentNode, error)
 	DeleteAgentNodeAndAgentByAgentID(agentID uint) error
+	RestoreAgentSubtree(rootAgentID uint) error
 }
 
 type agentNodeRepo struct {
@@ -277,15 +278,32 @@ func (r *agentNodeRepo) GetNodeByAgentID(agentID uint) (*models.AgentNode, error
 func (r *agentNodeRepo) DeleteAgentNodeAndAgentByAgentID(agentID uint) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var node models.AgentNode
-		if err := tx.Where("agent_id = ?", agentID).First(&node).Error; err != nil {
+		// Lock per evitare che un altro Create/Delete concorrente modifichi
+		// lft/rgt mentre stiamo calcolando il subtree da rimuovere
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("agent_id = ?", agentID).
+			First(&node).Error; err != nil {
 			return err
 		}
 
-		var subtreeAgentIDs []uint
-		if err := tx.Model(&models.AgentNode{}).
+		width := node.Rgt - node.Lft + 1
+
+		// Recupera l'intero subtree ordinato per lft DESC: grazie alla proprietà
+		// del nested set (child.lft > parent.lft sempre), questo ordine garantisce
+		// che ogni figlio venga elaborato/cancellato prima del proprio genitore
+		var subtreeNodes []models.AgentNode
+		if err := tx.
 			Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
-			Pluck("agent_id", &subtreeAgentIDs).Error; err != nil {
+			Order("lft DESC").
+			Find(&subtreeNodes).Error; err != nil {
 			return err
+		}
+
+		subtreeAgentIDs := make([]uint, 0, len(subtreeNodes))
+		subtreeNodeIDs := make([]uint, 0, len(subtreeNodes))
+		for _, n := range subtreeNodes {
+			subtreeAgentIDs = append(subtreeAgentIDs, n.AgentID)
+			subtreeNodeIDs = append(subtreeNodeIDs, n.ID)
 		}
 
 		if len(subtreeAgentIDs) > 0 {
@@ -297,24 +315,148 @@ func (r *agentNodeRepo) DeleteAgentNodeAndAgentByAgentID(agentID uint) error {
 			}
 
 			if len(agencyIDs) > 0 {
+				// Utenti finali agganciati alle agenzie del sottoalbero -> soft delete (deleted_at)
 				if err := tx.Where("role = ? AND foreign_id IN ?", enums.RoleUser, agencyIDs).
 					Delete(&models.User{}).Error; err != nil {
 					return err
 				}
+				// Agenzie del sottoalbero -> soft delete (deleted_at)
 				if err := tx.Where("id IN ?", agencyIDs).
 					Delete(&models.User{}).Error; err != nil {
 					return err
 				}
 			}
 
-			// FIX: id, non foreign_id
+			// Agenti del sottoalbero (incluso quello radice) -> soft delete (deleted_at)
 			if err := tx.Where("role = ? AND id IN ?", enums.RoleAgent, subtreeAgentIDs).
 				Delete(&models.User{}).Error; err != nil {
 				return err
 			}
 		}
 
-		return tx.Where("lft >= ? AND rgt <= ?", node.Lft, node.Rgt).
-			Delete(&models.AgentNode{}).Error
+		// Hard delete dei nodi in ordine lft DESC (figli prima dei genitori),
+		// per rispettare il vincolo FK auto-referenziale fk_agent_nodes_parent
+		for _, nodeID := range subtreeNodeIDs {
+			if err := tx.Where("id = ?", nodeID).
+				Delete(&models.AgentNode{}).Error; err != nil {
+				return err
+			}
+		}
+
+		// Richiude il "buco" lasciato dal sottoalbero eliminato nel nested set
+		if err := tx.Model(&models.AgentNode{}).
+			Where("rgt > ?", node.Rgt).
+			Update("rgt", gorm.Expr("rgt - ?", width)).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&models.AgentNode{}).
+			Where("lft > ?", node.Rgt).
+			Update("lft", gorm.Expr("lft - ?", width)).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// RestoreAgentSubtree ripristina un agente eliminato (e tutto il suo sottoalbero)
+// ricostruendo gli AgentNode a partire dai ForeignId rimasti sugli User soft-deleted.
+// NB: le posizioni esatte lft/rgt e l'ordine tra fratelli non sono garantiti identici
+// all'originale, ma la struttura genitore-figlio viene ripristinata fedelmente.
+func (r *agentNodeRepo) RestoreAgentSubtree(rootAgentID uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		nodeRepo := r.WithTx(tx)
+
+		var rootUser models.User
+		if err := tx.Unscoped().
+			Where("id = ? AND role = ? AND deleted_at IS NOT NULL", rootAgentID, enums.RoleAgent).
+			First(&rootUser).Error; err != nil {
+			return fmt.Errorf("agente eliminato non trovato: %w", err)
+		}
+
+		// BFS: raccoglie l'intero sottoalbero di agenti eliminati seguendo
+		// la catena dei ForeignId (parent -> children). L'ordine di visita
+		// garantisce che ogni genitore venga elaborato prima dei suoi figli.
+		subtreeAgents := []models.User{rootUser}
+		queue := []uint{rootUser.ID}
+		for len(queue) > 0 {
+			currentID := queue[0]
+			queue = queue[1:]
+
+			var children []models.User
+			if err := tx.Unscoped().
+				Where("role = ? AND foreign_id = ? AND deleted_at IS NOT NULL", enums.RoleAgent, currentID).
+				Find(&children).Error; err != nil {
+				return err
+			}
+			for _, child := range children {
+				subtreeAgents = append(subtreeAgents, child)
+				queue = append(queue, child.ID)
+			}
+		}
+
+		agentIDs := make([]uint, 0, len(subtreeAgents))
+		for _, a := range subtreeAgents {
+			agentIDs = append(agentIDs, a.ID)
+		}
+
+		// Agenzie eliminate collegate agli agenti del sottoalbero
+		var agencyIDs []uint
+		if err := tx.Unscoped().Model(&models.User{}).
+			Where("role = ? AND foreign_id IN ? AND deleted_at IS NOT NULL", enums.RoleAgency, agentIDs).
+			Pluck("id", &agencyIDs).Error; err != nil {
+			return err
+		}
+
+		// Ripristina gli agenti
+		if err := tx.Unscoped().Model(&models.User{}).
+			Where("id IN ?", agentIDs).
+			Update("deleted_at", nil).Error; err != nil {
+			return err
+		}
+
+		// Ripristina agenzie e relativi utenti finali
+		if len(agencyIDs) > 0 {
+			if err := tx.Unscoped().Model(&models.User{}).
+				Where("id IN ?", agencyIDs).
+				Update("deleted_at", nil).Error; err != nil {
+				return err
+			}
+			if err := tx.Unscoped().Model(&models.User{}).
+				Where("role = ? AND foreign_id IN ?", enums.RoleUser, agencyIDs).
+				Update("deleted_at", nil).Error; err != nil {
+				return err
+			}
+		}
+
+		// Ricrea gli AgentNode in ordine top-down, riusando l'algoritmo
+		// di inserimento nested-set già usato in fase di creazione normale
+		for _, agent := range subtreeAgents {
+			// Guard: se il nodo esiste già (es. undo chiamato due volte), salta
+			if _, err := nodeRepo.GetNodeByAgentID(agent.ID); err == nil {
+				continue
+			} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+
+			var parentNodeID *uint
+			if agent.ForeignId != nil {
+				parentNode, err := nodeRepo.GetNodeByAgentID(*agent.ForeignId)
+				if err != nil {
+					return fmt.Errorf("nodo padre non trovato per l'agente %d: %w", agent.ID, err)
+				}
+				parentNodeID = &parentNode.ID
+			}
+
+			newNode := &models.AgentNode{
+				ParentID: parentNodeID,
+				AgentID:  agent.ID,
+			}
+			if err := nodeRepo.Create(newNode); err != nil {
+				return fmt.Errorf("impossibile ricreare il nodo per l'agente %d: %w", agent.ID, err)
+			}
+		}
+
+		return nil
 	})
 }

@@ -18,6 +18,7 @@ type AgentNodeService interface {
 	CreateNode(request *user.UserRequest, actor policies.AuthContext) (*agent_node.AgentNodeResponse, error)
 	GetTree(actor policies.AuthContext) ([]*agent_node.AgentNodeResponse, error)
 	DeleteNode(agentID uint, actor policies.AuthContext) error
+	RestoreNode(agentID uint, actor policies.AuthContext) error
 }
 
 type agentNodeService struct {
@@ -173,4 +174,12 @@ func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) 
 	}
 
 	return s.repo.DeleteAgentNodeAndAgentByAgentID(agentID)
+}
+
+func (s *agentNodeService) RestoreNode(agentID uint, actor policies.AuthContext) error {
+	if actor.Role != enums.RoleAdmin.String() {
+		return nil
+	}
+
+	return s.repo.RestoreAgentSubtree(agentID)
 }

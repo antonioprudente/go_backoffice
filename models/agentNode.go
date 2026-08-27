@@ -1,9 +1,7 @@
 package models
 
-import "gorm.io/gorm"
-
 type AgentNode struct {
-	gorm.Model
+	ID       uint  `json:"id" gorm:"primaryKey;autoIncrement"`
 	Lft      uint  `json:"lft" gorm:"index;not null"`
 	Rgt      uint  `json:"rgt" gorm:"index;not null"`
 	ParentID *uint `json:"parent_id" gorm:"index"`
