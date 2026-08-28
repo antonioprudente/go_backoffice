@@ -21,6 +21,7 @@ func main() {
 	authController := InitAuthController(db)
 	agencyOperatorController := InitAgencyOperatorController(db)
 	agentOperatorController := InitAgentOperatorController(db)
+	activityLogController := InitActivityLogController(db)
 
 	// Setup Router
 	router := gin.Default()
@@ -34,6 +35,14 @@ func main() {
 
 		protected.POST("/logout", authController.Logout) //POST /logout (non ancora implementato)
 		protected.GET("/profile", userController.GetPersonalProfile)
+
+		admin := protected.Group("")
+		admin.Use(
+			middlewares.RequireRoles(enums.RoleAdmin.String()),
+		)
+		{
+			admin.GET("/logs", activityLogController.ActivityLog) // GET /logs
+		}
 
 		// OPERATORS
 		operators := protected.Group("/operators")

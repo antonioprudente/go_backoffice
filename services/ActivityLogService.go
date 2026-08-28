@@ -7,6 +7,7 @@ import (
 
 type ActivityLogService interface {
 	NewLog(log *models.ActivityLog) error
+	GetActivity() ([]*models.ActivityLog, error)
 }
 
 type activityLogService struct {
@@ -19,4 +20,12 @@ func NewActivityLogService(repo repositories.ActivityLogRepo) ActivityLogService
 
 func (s *activityLogService) NewLog(log *models.ActivityLog) error {
 	return s.repo.Create(log)
+}
+
+func (s *activityLogService) GetActivity() ([]*models.ActivityLog, error) {
+	activity, err := s.repo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	return activity, err
 }

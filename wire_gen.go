@@ -69,3 +69,10 @@ func InitAgencyOperatorController(db *gorm.DB) *controllers.AgencyOperatorContro
 	agencyOperatorController := controllers.NewAgencyOperatorController(agencyOperatorService)
 	return agencyOperatorController
 }
+
+func InitActivityLogController(db *gorm.DB) *controllers.ActivityLogController {
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
+	activityLogController := controllers.NewActivityLogController(activityLogService)
+	return activityLogController
+}
