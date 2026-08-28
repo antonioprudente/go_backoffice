@@ -20,8 +20,10 @@ func InitUserController(db *gorm.DB) *controllers.UserController {
 	userRepo := repositories.NewUserRepository(db)
 	scopeRepo := repositories.NewScopeRepository(db)
 	agencyOperatorRepo := repositories.NewAgencyOperatorRepository(db)
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
 	userPolicy := policies.NewUserPolicy(scopeRepo, userRepo)
-	userService := services.NewUserService(db, userRepo, scopeRepo, agencyOperatorRepo, userPolicy)
+	userService := services.NewUserService(db, userRepo, scopeRepo, agencyOperatorRepo, activityLogService, userPolicy)
 	userController := controllers.NewUserController(userService)
 	return userController
 }
@@ -30,11 +32,13 @@ func InitAgentController(db *gorm.DB) *controllers.AgentController {
 	userRepo := repositories.NewUserRepository(db)
 	scopeRepo := repositories.NewScopeRepository(db)
 	agencyOperatorRepo := repositories.NewAgencyOperatorRepository(db)
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
 	userPolicy := policies.NewUserPolicy(scopeRepo, userRepo)
-	userService := services.NewUserService(db, userRepo, scopeRepo, agencyOperatorRepo, userPolicy)
+	userService := services.NewUserService(db, userRepo, scopeRepo, agencyOperatorRepo, activityLogService, userPolicy)
 	agentNodeRepo := repositories.NewAgentNodeRepository(db)
 	agentOperatorRepo := repositories.NewAgentOperatorRepository(db)
-	agentNodeService := services.NewAgentNodeService(db, agentNodeRepo, agentOperatorRepo, scopeRepo, userRepo, userPolicy)
+	agentNodeService := services.NewAgentNodeService(db, agentNodeRepo, agentOperatorRepo, scopeRepo, userRepo, userPolicy, activityLogService)
 	agentController := controllers.NewAgentController(userService, agentNodeService)
 	return agentController
 }
@@ -49,7 +53,9 @@ func InitAuthController(db *gorm.DB) *controllers.AuthController {
 func InitAgentOperatorController(db *gorm.DB) *controllers.AgentOperatorController {
 	agentOperatorRepo := repositories.NewAgentOperatorRepository(db)
 	userRepo := repositories.NewUserRepository(db)
-	agentOperatorService := services.NewAgentOperatorService(agentOperatorRepo, userRepo)
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
+	agentOperatorService := services.NewAgentOperatorService(agentOperatorRepo, userRepo, activityLogService)
 	agentOperatorController := controllers.NewAgentOperatorController(agentOperatorService)
 	return agentOperatorController
 }
@@ -57,7 +63,9 @@ func InitAgentOperatorController(db *gorm.DB) *controllers.AgentOperatorControll
 func InitAgencyOperatorController(db *gorm.DB) *controllers.AgencyOperatorController {
 	agencyOperatorRepo := repositories.NewAgencyOperatorRepository(db)
 	userRepo := repositories.NewUserRepository(db)
-	agencyOperatorService := services.NewAgencyOperatorService(agencyOperatorRepo, userRepo)
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
+	agencyOperatorService := services.NewAgencyOperatorService(agencyOperatorRepo, userRepo, activityLogService)
 	agencyOperatorController := controllers.NewAgencyOperatorController(agencyOperatorService)
 	return agencyOperatorController
 }

@@ -128,6 +128,7 @@ func main() {
 			users.GET("", userController.GetUsers)                      // GET /users
 			users.GET("/:id", userController.GetUserByID)               // GET /users/:id
 			users.PUT("/:id", userController.UpdateUser)                // PUT /users
+			users.PATCH("/move", userController.ChangeForeignID)        // PATCH /users/move
 			users.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
 			users.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
 			users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block

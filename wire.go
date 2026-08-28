@@ -18,8 +18,10 @@ func InitUserController(db *gorm.DB) *controllers.UserController {
 		repositories.NewUserRepository,
 		repositories.NewScopeRepository,
 		repositories.NewAgencyOperatorRepository,
+		repositories.NewActivityLogRepository,
 		policies.NewUserPolicy,
 		services.NewUserService,
+		services.NewActivityLogService,
 		controllers.NewUserController,
 	)
 	return nil
@@ -32,9 +34,11 @@ func InitAgentController(db *gorm.DB) *controllers.AgentController {
 		repositories.NewScopeRepository,
 		repositories.NewAgentOperatorRepository,
 		repositories.NewAgencyOperatorRepository,
+		repositories.NewActivityLogRepository,
 		policies.NewUserPolicy,
 		services.NewAgentNodeService,
 		services.NewUserService,
+		services.NewActivityLogService,
 		controllers.NewAgentController,
 	)
 	return nil
@@ -53,7 +57,9 @@ func InitAgentOperatorController(db *gorm.DB) *controllers.AgentOperatorControll
 	wire.Build(
 		repositories.NewAgentOperatorRepository,
 		repositories.NewUserRepository,
+		repositories.NewActivityLogRepository,
 		services.NewAgentOperatorService,
+		services.NewActivityLogService,
 		controllers.NewAgentOperatorController,
 	)
 	return nil
@@ -63,7 +69,9 @@ func InitAgencyOperatorController(db *gorm.DB) *controllers.AgencyOperatorContro
 	wire.Build(
 		repositories.NewAgencyOperatorRepository,
 		repositories.NewUserRepository,
+		repositories.NewActivityLogRepository,
 		services.NewAgencyOperatorService,
+		services.NewActivityLogService,
 		controllers.NewAgencyOperatorController,
 	)
 	return nil

@@ -8,6 +8,7 @@ import (
 	"example/go_backoffice/models"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
+	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -28,6 +29,7 @@ type userService struct {
 	repo         repositories.UserRepo
 	scopeRepo    repositories.ScopeRepo
 	agencyOpRepo repositories.AgencyOperatorRepo
+	logService   ActivityLogService
 	policy       policies.UserPolicy
 }
 
@@ -36,6 +38,7 @@ func NewUserService(
 	repo repositories.UserRepo,
 	scopeRepo repositories.ScopeRepo,
 	agencyOpRepo repositories.AgencyOperatorRepo,
+	logService ActivityLogService,
 	policy policies.UserPolicy,
 ) UserService {
 	return &userService{
@@ -43,6 +46,7 @@ func NewUserService(
 		repo:         repo,
 		scopeRepo:    scopeRepo,
 		agencyOpRepo: agencyOpRepo,
+		logService:   logService,
 		policy:       policy,
 	}
 }
@@ -107,6 +111,16 @@ func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthC
 		return nil, txErr
 	}
 
+	// Activity Log - Creazione Utente
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "CREATE_USER",
+		TargetType:  "User",
+		TargetID:    &newUser.ID,
+		Description: fmt.Sprintf("Creato nuovo utente '%s' con ruolo %s", newUser.Username, newUser.Role),
+	})
+
 	response := mappers.ToUserResponse(newUser)
 	return &response, nil
 }
@@ -149,12 +163,21 @@ func (s *userService) UpdateUser(id uint, request *user.UserRequest, actor polic
 		return nil, err
 	}
 
+	// Activity Log - Aggiornamento Dati
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "UPDATE_USER",
+		TargetType:  "User",
+		TargetID:    &existing.ID,
+		Description: fmt.Sprintf("Aggiornati i dati dell'utente '%s'", existing.Username),
+	})
+
 	response := mappers.ToUserResponse(existing)
 	return &response, nil
 }
 
 func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.Status, actor policies.AuthContext) (*user.UserResponse, error) {
-
 	existing, err := s.repo.GetByIDAndRole(userID, targetRole)
 	if err != nil {
 		return nil, err
@@ -168,6 +191,16 @@ func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.
 	if err != nil {
 		return nil, err
 	}
+
+	// Activity Log - Cambio Stato
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "CHANGE_STATUS",
+		TargetType:  "User",
+		TargetID:    &updated.ID,
+		Description: fmt.Sprintf("Stato dell'utente '%s' impostato a %s", updated.Username, status),
+	})
 
 	response := mappers.ToUserResponse(updated)
 	return &response, nil
@@ -201,6 +234,17 @@ func (s *userService) ChangeForeignID(request user.ChangeForeignRequest, targetR
 	if err != nil {
 		return nil, err
 	}
+
+	// Activity Log - Spostamento Relazionale
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "CHANGE_FOREIGN_ID",
+		TargetType:  "User",
+		TargetID:    &updated.ID,
+		Description: fmt.Sprintf("Utente '%s' collegato alla nuova entità genitore #%d", updated.Username, *request.TargetID),
+	})
+
 	response := mappers.ToUserResponse(updated)
 	return &response, nil
 }
@@ -214,5 +258,20 @@ func (s *userService) DeleteUserByIdAndRole(id uint, targetRole string, actor po
 	if err := s.policy.Delete(actor, existing); err != nil {
 		return err
 	}
-	return s.repo.DeleteByIdAndRole(id, targetRole)
+
+	if err := s.repo.DeleteByIdAndRole(id, targetRole); err != nil {
+		return err
+	}
+
+	// Activity Log - Eliminazione
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "DELETE_USER",
+		TargetType:  "User",
+		TargetID:    &id,
+		Description: fmt.Sprintf("Eliminato l'utente '%s' (Ruolo: %s)", existing.Username, targetRole),
+	})
+
+	return nil
 }

@@ -2,6 +2,9 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"log"
+
 	"example/go_backoffice/dto/agent_node"
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
@@ -9,7 +12,6 @@ import (
 	"example/go_backoffice/models"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
-	"log"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -30,6 +32,7 @@ type agentNodeService struct {
 	scopeRepo   repositories.ScopeRepo
 	userRepo    repositories.UserRepo
 	policy      policies.UserPolicy
+	logService  ActivityLogService
 }
 
 func NewAgentNodeService(
@@ -39,10 +42,16 @@ func NewAgentNodeService(
 	scopeRepo repositories.ScopeRepo,
 	userRepo repositories.UserRepo,
 	policy policies.UserPolicy,
+	logService ActivityLogService,
 ) AgentNodeService {
 	return &agentNodeService{
-		db: db, repo: repo, agentOpRepo: agentOpRepo,
-		scopeRepo: scopeRepo, userRepo: userRepo, policy: policy,
+		db:          db,
+		repo:        repo,
+		agentOpRepo: agentOpRepo,
+		scopeRepo:   scopeRepo,
+		userRepo:    userRepo,
+		policy:      policy,
+		logService:  logService,
 	}
 }
 
@@ -101,6 +110,16 @@ func (s *agentNodeService) CreateNode(request *user.UserRequest, actor policies.
 	if txErr != nil {
 		return nil, txErr
 	}
+
+	// Log dell'attività
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "CREATE_AGENT_NODE",
+		TargetType:  "AgentNode",
+		TargetID:    &newNode.ID,
+		Description: fmt.Sprintf("Creato nuovo nodo Agente #%d (User ID: %d)", newNode.ID, newNode.AgentID),
+	})
 
 	response := mappers.ToAgentNodeResponse(newNode)
 	return &response, nil
@@ -175,12 +194,39 @@ func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) 
 		return err
 	}
 
-	return s.repo.DeleteAgentNodeAndAgentByAgentID(agentID)
+	if err := s.repo.DeleteAgentNodeAndAgentByAgentID(agentID); err != nil {
+		return err
+	}
+
+	// Log dell'attività
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "DELETE_AGENT_NODE",
+		TargetType:  "AgentNode",
+		TargetID:    &agentID,
+		Description: fmt.Sprintf("Eliminato nodo Agente #%d e relativa sottostruttura", agentID),
+	})
+
+	return nil
 }
 
 func (s *agentNodeService) RestoreNode(agentID uint, actor policies.AuthContext) error {
+	if err := s.repo.RestoreAgentSubtree(agentID); err != nil {
+		return err
+	}
 
-	return s.repo.RestoreAgentSubtree(agentID)
+	// Log dell'attività
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "RESTORE_AGENT_NODE",
+		TargetType:  "AgentNode",
+		TargetID:    &agentID,
+		Description: fmt.Sprintf("Ripristinato nodo Agente #%d e sottostruttura", agentID),
+	})
+
+	return nil
 }
 
 func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor policies.AuthContext) error {
@@ -199,10 +245,30 @@ func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor pol
 	}
 
 	if err := s.policy.Move(actor, target, newParent); err != nil {
-		log.Printf("DEBUG: policy.Move ha bloccato: %v", err) // <-- aggiungi
+		log.Printf("DEBUG: policy.Move ha bloccato: %v", err)
 		return err
 	}
 
-	log.Println("DEBUG: policy.Move ha dato via libera, chiamo repo.MoveNode") // <-- aggiungi
-	return s.repo.MoveNode(request.UserID, request.TargetID)
+	log.Println("DEBUG: policy.Move ha dato via libera, chiamo repo.MoveNode")
+	if err := s.repo.MoveNode(request.UserID, request.TargetID); err != nil {
+		return err
+	}
+
+	// Prepara la descrizione del log
+	targetText := "radice"
+	if request.TargetID != nil {
+		targetText = fmt.Sprintf("Agente Parent #%d", *request.TargetID)
+	}
+
+	// Log dell'attività
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "MOVE_AGENT_NODE",
+		TargetType:  "AgentNode",
+		TargetID:    &request.UserID,
+		Description: fmt.Sprintf("Spostato nodo Agente #%d sotto %s", request.UserID, targetText),
+	})
+
+	return nil
 }

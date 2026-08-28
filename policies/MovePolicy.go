@@ -98,6 +98,25 @@ func (p *MovePolicy) moveAsOperator(actor AuthContext, target *models.User, newP
 			return ErrForbidden
 		}
 		return nil
+
+	case enums.RoleUser:
+		if newParent.Role != enums.RoleAgency {
+			return ErrForbidden
+		}
+		targetAssigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignId)
+
+		if err != nil {
+			return err
+		}
+		if !targetAssigned {
+			return ErrForbidden
+		}
+
+		newParentAssigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, target.ID)
+		if !newParentAssigned {
+			return ErrForbidden
+		}
+		return nil
 	}
 	return ErrUnknownRole
 }
@@ -146,6 +165,20 @@ func (p *MovePolicy) moveAsAgent(actor AuthContext, target *models.User, newPare
 			return ErrForbidden
 		}
 		return nil
+
+	case enums.RoleUser:
+		if newParent == nil {
+			return ErrMissingRelation
+		}
+
+		nowParent, err := p.userRepo.GetByIDAndRole(*target.ForeignId, enums.RoleUser.String())
+		if err != nil {
+			return err
+		}
+
+		if !slices.Contains(descendants, *nowParent.ForeignId) || !slices.Contains(descendants, newParent.ID) {
+			return ErrForbidden
+		}
 	}
 
 	return ErrUnknownRole

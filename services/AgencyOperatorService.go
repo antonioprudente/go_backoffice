@@ -5,8 +5,10 @@ import (
 	"example/go_backoffice/dto/pivot"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/mappers"
+	"example/go_backoffice/models"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
+	"fmt"
 )
 
 type AgencyOperatorService interface {
@@ -16,17 +18,20 @@ type AgencyOperatorService interface {
 }
 
 type agencyOperatorService struct {
-	repo     repositories.AgencyOperatorRepo
-	userRepo repositories.UserRepo
+	repo       repositories.AgencyOperatorRepo
+	userRepo   repositories.UserRepo
+	logService ActivityLogService
 }
 
 func NewAgencyOperatorService(
 	repo repositories.AgencyOperatorRepo,
 	userRepo repositories.UserRepo,
+	logService ActivityLogService,
 ) AgencyOperatorService {
 	return &agencyOperatorService{
-		repo:     repo,
-		userRepo: userRepo,
+		repo:       repo,
+		userRepo:   userRepo,
+		logService: logService,
 	}
 }
 
@@ -51,6 +56,16 @@ func (s *agencyOperatorService) AssignAgencyToOperator(request *pivot.AssignToOp
 		return nil, err
 	}
 
+	// Log dell'assegnazione singola
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "ASSIGN_AGENCY_OPERATOR",
+		TargetType:  "AgencyOperator",
+		TargetID:    request.AgencyId,
+		Description: fmt.Sprintf("Assegnata Agenzia #%d all'Operatore #%d", *request.AgencyId, request.OperatorId),
+	})
+
 	response := mappers.ToAgencyOperatorResponse(newPivot)
 	return response, nil
 }
@@ -66,6 +81,16 @@ func (s *agencyOperatorService) AssignAgenciesToOperator(request *pivot.ArraysTo
 		return nil, err
 	}
 
+	// Log dell'assegnazione massiva
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "MASSIVE_ASSIGN_AGENCY_OPERATOR",
+		TargetType:  "AgencyOperator",
+		TargetID:    &request.OperatorId,
+		Description: fmt.Sprintf("Assegnate %d Agenzie all'Operatore #%d", len(*request.AgencyIds), request.OperatorId),
+	})
+
 	response := mappers.ToArrAgencyOperatorResponse(newPivots)
 	return response, nil
 }
@@ -76,10 +101,19 @@ func (s *agencyOperatorService) RemoveAgencyFromOperator(agencyID *uint, operato
 		return nil, err
 	}
 
-	// Se nessuna riga è stata cancellata, restituiamo un errore esplicito
 	if !res {
 		return nil, errors.New("associazione tra agente e operatore non trovata")
 	}
+
+	// Log della rimozione
+	_ = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      "REMOVE_AGENCY_OPERATOR",
+		TargetType:  "AgencyOperator",
+		TargetID:    agencyID,
+		Description: fmt.Sprintf("Rimossa Agenzia #%d dall'Operatore #%d", *agencyID, *operatorID),
+	})
 
 	return &res, nil
 }
