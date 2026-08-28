@@ -9,6 +9,7 @@ import (
 	"example/go_backoffice/models"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
+	"log"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -188,14 +189,20 @@ func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor pol
 		return err
 	}
 
-	newParent, err := s.userRepo.GetByIDAndRole(request.UserID, enums.RoleAgent.String())
-	if err != nil {
-		return err
+	var newParent *models.User
+	if request.TargetID != nil {
+		parent, err := s.userRepo.GetByIDAndRole(*request.TargetID, enums.RoleAgent.String())
+		if err != nil {
+			return err
+		}
+		newParent = parent
 	}
 
 	if err := s.policy.Move(actor, target, newParent); err != nil {
+		log.Printf("DEBUG: policy.Move ha bloccato: %v", err) // <-- aggiungi
 		return err
 	}
 
+	log.Println("DEBUG: policy.Move ha dato via libera, chiamo repo.MoveNode") // <-- aggiungi
 	return s.repo.MoveNode(request.UserID, request.TargetID)
 }

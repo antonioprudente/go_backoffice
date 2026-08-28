@@ -50,49 +50,103 @@ func (p *MovePolicy) Check(actor AuthContext, target *models.User, newParent *mo
 // moveAsOperator: sia il nodo spostato che quello di destinazione devono
 // essere agenti assegnati all'operatore.
 func (p *MovePolicy) moveAsOperator(actor AuthContext, target *models.User, newParent *models.User) error {
-	nodeAssigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, target.ID)
-	if err != nil {
-		return err
-	}
-	if !nodeAssigned {
-		return ErrForbidden
-	}
+	switch target.Role {
+	case enums.RoleAgency:
+		if newParent.Role != enums.RoleAgent {
+			return ErrForbidden
+		}
 
-	destAssigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, newParent.ID)
-	if err != nil {
-		return err
-	}
-	if !destAssigned {
-		return ErrForbidden
-	}
+		trgtAgencyAssigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, target.ID)
+		if err != nil {
+			return err
+		}
 
-	return nil
+		if !trgtAgencyAssigned {
+			return ErrForbidden
+		}
+
+		newPrntAssigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, newParent.ID)
+		if err != nil {
+			return err
+		}
+
+		if !newPrntAssigned {
+			return ErrForbidden
+		}
+		return nil
+
+	case enums.RoleAgent:
+		if newParent.Role != enums.RoleAgent {
+			return ErrForbidden
+		}
+
+		targetAssigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, target.ID)
+		if err != nil {
+			return err
+		}
+
+		if !targetAssigned {
+			return ErrForbidden
+		}
+
+		newParentAssigned, err := p.scopeRepo.IsAgentAssignedToOperator(actor.UserID, newParent.ID)
+		if err != nil {
+			return err
+		}
+
+		if !newParentAssigned {
+			return ErrForbidden
+		}
+		return nil
+	}
+	return ErrUnknownRole
 }
 
 // moveAsAgent: sia il nodo spostato che la destinazione devono trovarsi
 // nel sottoalbero dell'agente (sé stesso incluso).
 func (p *MovePolicy) moveAsAgent(actor AuthContext, target *models.User, newParent *models.User) error {
-	// Vieta di spostare l'agente loggato stesso
-	if target.ID == actor.UserID {
-		return ErrForbidden
-	}
-
 	descendants, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(actor.UserID)
 	if err != nil {
 		return err
 	}
 
-	if !slices.Contains(descendants, target.ID) {
-		return ErrForbidden
+	switch target.Role {
+	case enums.RoleAgency:
+		if target.ForeignId == nil {
+			return ErrMissingRelation
+		}
+
+		// L'agenzia "appartiene" al sottoalbero tramite l'agente a cui è
+		// agganciata (ForeignId), non tramite il proprio ID: sia l'agente
+		// proprietario attuale sia il nuovo agente di destinazione devono
+		// trovarsi nel tuo sottoalbero.
+		if !slices.Contains(descendants, *target.ForeignId) {
+			return ErrForbidden
+		}
+
+		if newParent == nil {
+			return ErrForbidden
+		}
+
+		if !slices.Contains(descendants, newParent.ID) {
+			return ErrForbidden
+		}
+		return nil
+
+	case enums.RoleAgent:
+		if target.ID == actor.UserID {
+			return ErrForbidden
+		}
+
+		if newParent == nil {
+			return ErrForbidden
+		}
+
+		if !slices.Contains(descendants, newParent.ID) || !slices.Contains(descendants, target.ID) {
+			return ErrForbidden
+		}
+		return nil
 	}
 
-	if !slices.Contains(descendants, newParent.ID) {
-		return ErrForbidden
-	}
-
-	if actor.UserID == target.ID {
-		return ErrForbidden
-	}
-
-	return nil
+	return ErrUnknownRole
 }

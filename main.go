@@ -110,9 +110,10 @@ func main() {
 			agencies.GET("", userController.GetUsers)                      // GET /agencies
 			agencies.GET("/:id", userController.GetUserByID)               // GET /agencies/:id
 			agencies.PUT("/:id", userController.UpdateUser)                // PUT /agencies
-			agencies.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /users/:id/active
-			agencies.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /users/:id/suspend
-			agencies.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
+			agencies.PATCH("/move", userController.ChangeForeignID)        // PATCH /agencies/move
+			agencies.PATCH("/:id/active", userController.ActiveUserById)   // PATCH /agencies/:id/active
+			agencies.PATCH("/:id/suspend", userController.SuspendUserById) // PATCH /agencies/:id/suspend
+			agencies.PATCH("/:id/block", userController.BlockUserById)     // PATCH /agencies/:id/block
 			agencies.DELETE("/:id", userController.DeleteUser)             // DELETE /agencies/:id
 		}
 

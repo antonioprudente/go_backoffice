@@ -183,6 +183,7 @@ func (s *userService) ChangeForeignID(request user.ChangeForeignRequest, targetR
 	if targetRole == enums.RoleAgency.String() {
 		parentRole = enums.RoleAgent.String()
 	}
+
 	if targetRole == enums.RoleUser.String() {
 		parentRole = enums.RoleAgency.String()
 	}
