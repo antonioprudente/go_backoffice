@@ -10,7 +10,7 @@ type AgencyOperatorRepo interface {
 	WithTx(tx *gorm.DB) AgencyOperatorRepo
 	AssignAgency(model *models.AgencyOperator) (*models.AgencyOperator, error)
 	AssignAgenciesMassive(agencyOperator *[]models.AgencyOperator) (*[]models.AgencyOperator, error)
-	GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (models.AgencyOperator, error)
+	GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (*models.AgencyOperator, error)
 	DeleteByAgencyIDAndOperatorID(agencyID uint, operatorID uint) (bool, error)
 }
 
@@ -46,15 +46,15 @@ func (r *agencyOperatorRepo) AssignAgenciesMassive(agencyOperator *[]models.Agen
 	return agencyOperator, nil
 }
 
-func (r *agencyOperatorRepo) GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (models.AgencyOperator, error) {
+func (r *agencyOperatorRepo) GetByOperatorIDAndAgencyID(operatorID uint, agencyID uint) (*models.AgencyOperator, error) {
 	var agencyOperator models.AgencyOperator
 
 	err := r.db.Where("operator_id = ? AND agent_id = ?", operatorID, agencyID).First(&agencyOperator).Error
 	if err != nil {
-		return models.AgencyOperator{}, err
+		return nil, err
 	}
 
-	return agencyOperator, nil
+	return &agencyOperator, nil
 }
 
 func (r *agencyOperatorRepo) DeleteByAgencyIDAndOperatorID(agencyID uint, operatorID uint) (bool, error) {

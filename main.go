@@ -21,6 +21,7 @@ func main() {
 	authController := InitAuthController(db)
 	agencyOperatorController := InitAgencyOperatorController(db)
 	agentOperatorController := InitAgentOperatorController(db)
+	scopeController := InitScopeController(db)
 	activityLogController := InitActivityLogController(db)
 
 	// Setup Router
@@ -80,6 +81,7 @@ func main() {
 			middlewares.RequireRoles(enums.RoleAdmin.String()),
 		)
 		{
+			pivot.POST("/assign", scopeController.AssignToOperator)                                               // POST /operator/assign
 			pivot.POST("/to/agency", agencyOperatorController.AssignAgencyToOperator)                             // POST /operator/to/agency
 			pivot.POST("/to/agent", agentOperatorController.AssignAgentToOperator)                                // POST /operator/to/agent
 			pivot.POST("/to/agencies", agencyOperatorController.AssignAgenciesToOperator)                         // POST /operator/to/agencies

@@ -77,6 +77,15 @@ func InitAgencyOperatorController(db *gorm.DB) *controllers.AgencyOperatorContro
 	return nil
 }
 
+func InitScopeController(db *gorm.DB) *controllers.ScopeController {
+	wire.Build(
+		repositories.NewScopeRepository,
+		services.NewScopeService,
+		controllers.NewScopeControllerController,
+	)
+	return nil
+}
+
 func InitActivityLogController(db *gorm.DB) *controllers.ActivityLogController {
 	wire.Build(
 		repositories.NewActivityLogRepository,
