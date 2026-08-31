@@ -21,9 +21,8 @@ type ActivityLog struct {
 	// cambiare in futuro, ma il log deve restare storicamente accurato)
 	ActorRole enums.Role `json:"role" gorm:"type:enum('ADMIN', 'OPERATOR', 'AGENT', 'AGENCY', 'USER')"`
 
-	// Tipo di azione compiuta, es. "CREATE_USER", "UPDATE_USER",
-	// "CHANGE_STATUS", "DELETE_USER", "LOGIN", "LOGOUT", "ASSIGN_AGENT"
-	Action string `json:"action" gorm:"type:varchar(50);not null;index"`
+	// Tipo di azione compiuta
+	Action enums.Action `json:"action" gorm:"type:enum('CREATE', 'UPDATE', 'DELETE', 'RESTORE', 'ASSIGNMENT', 'REMOVE', 'MOVE', 'ACTIVE', 'SUSPEND', 'BLOCK')"`
 
 	// Entità target su cui è stata eseguita l'azione (es. "User", "AgentNode",
 	// "AgentOperator"). Vuoto per azioni senza un target diretto (es. LOGIN)

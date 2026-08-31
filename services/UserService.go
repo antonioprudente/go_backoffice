@@ -9,6 +9,7 @@ import (
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 	"fmt"
+	"reflect"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -115,8 +116,8 @@ func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthC
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "CREATE_USER",
-		TargetType:  "User",
+		Action:      enums.Create,
+		TargetType:  reflect.TypeOf(newUser).Elem().Name(),
 		TargetID:    &newUser.ID,
 		Description: fmt.Sprintf("Creato nuovo utente '%s' con ruolo %s", newUser.Username, newUser.Role),
 	})
@@ -167,8 +168,8 @@ func (s *userService) UpdateUser(id uint, request *user.UserRequest, actor polic
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "UPDATE_USER",
-		TargetType:  "User",
+		Action:      enums.Update,
+		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &existing.ID,
 		Description: fmt.Sprintf("Aggiornati i dati dell'utente '%s'", existing.Username),
 	})
@@ -192,12 +193,24 @@ func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.
 		return nil, err
 	}
 
+	var action enums.Action
+	switch updated.Status {
+	case enums.StatusActive:
+		action = enums.Active
+
+	case enums.StatusSuspended:
+		action = enums.Suspend
+
+	case enums.StatusBlocked:
+		action = enums.Block
+	}
+
 	// Activity Log - Cambio Stato
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "CHANGE_STATUS",
-		TargetType:  "User",
+		Action:      action,
+		TargetType:  reflect.TypeOf(updated).Elem().Name(),
 		TargetID:    &updated.ID,
 		Description: fmt.Sprintf("Stato dell'utente '%s' impostato a %s", updated.Username, status),
 	})
@@ -239,8 +252,8 @@ func (s *userService) ChangeForeignID(request user.ChangeForeignRequest, targetR
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "CHANGE_FOREIGN_ID",
-		TargetType:  "User",
+		Action:      enums.Move,
+		TargetType:  reflect.TypeOf(updated).Elem().Name(),
 		TargetID:    &updated.ID,
 		Description: fmt.Sprintf("Utente '%s' collegato alla nuova entità genitore #%d", updated.Username, *request.TargetID),
 	})
@@ -267,8 +280,8 @@ func (s *userService) DeleteUserByIdAndRole(id uint, targetRole string, actor po
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "DELETE_USER",
-		TargetType:  "User",
+		Action:      enums.Delete,
+		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
 		TargetID:    &id,
 		Description: fmt.Sprintf("Eliminato l'utente '%s' (Ruolo: %s)", existing.Username, targetRole),
 	})

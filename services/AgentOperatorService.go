@@ -9,6 +9,7 @@ import (
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
 	"fmt"
+	"reflect"
 )
 
 type AgentOperatorService interface {
@@ -65,8 +66,8 @@ func (s *agentOperatorService) AssignAgentToOperator(request *pivot.AssignToOpRe
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "ASSIGN_AGENT_OPERATOR",
-		TargetType:  "AgentOperator",
+		Action:      enums.Assignment,
+		TargetType:  reflect.TypeOf(newPivot).Elem().Name(),
 		TargetID:    request.AgentId,
 		Description: fmt.Sprintf("Assegnato Agente #%d all'Operatore #%d", *request.AgentId, request.OperatorId),
 	})
@@ -90,8 +91,8 @@ func (s *agentOperatorService) AssignAgentsToOperator(request *pivot.ArraysToOpR
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "MASSIVE_ASSIGN_AGENT_OPERATOR",
-		TargetType:  "AgentOperator",
+		Action:      enums.Assignment,
+		TargetType:  reflect.TypeOf(newPivots).Elem().Name(),
 		TargetID:    &request.OperatorId,
 		Description: fmt.Sprintf("Assegnati %d Agenti all'Operatore #%d", len(*request.AgentIds), request.OperatorId),
 	})
@@ -114,8 +115,8 @@ func (s *agentOperatorService) RemoveAgentFromOperator(agentID *uint, operatorID
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "REMOVE_AGENT_OPERATOR",
-		TargetType:  "AgentOperator",
+		Action:      enums.Remove,
+		TargetType:  reflect.TypeOf(models.AgentOperator{}).Elem().Name(),
 		TargetID:    agentID,
 		Description: fmt.Sprintf("Rimosso Agente #%d dall'Operatore #%d", *agentID, *operatorID),
 	})

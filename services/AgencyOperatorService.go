@@ -60,7 +60,7 @@ func (s *agencyOperatorService) AssignAgencyToOperator(request *pivot.AssignToOp
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "ASSIGN_AGENCY_OPERATOR",
+		Action:      enums.Assignment,
 		TargetType:  "AgencyOperator",
 		TargetID:    request.AgencyId,
 		Description: fmt.Sprintf("Assegnata Agenzia #%d all'Operatore #%d", *request.AgencyId, request.OperatorId),
@@ -85,7 +85,7 @@ func (s *agencyOperatorService) AssignAgenciesToOperator(request *pivot.ArraysTo
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "MASSIVE_ASSIGN_AGENCY_OPERATOR",
+		Action:      enums.Assignment,
 		TargetType:  "AgencyOperator",
 		TargetID:    &request.OperatorId,
 		Description: fmt.Sprintf("Assegnate %d Agenzie all'Operatore #%d", len(*request.AgencyIds), request.OperatorId),
@@ -109,7 +109,7 @@ func (s *agencyOperatorService) RemoveAgencyFromOperator(agencyID *uint, operato
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "REMOVE_AGENCY_OPERATOR",
+		Action:      enums.Remove,
 		TargetType:  "AgencyOperator",
 		TargetID:    agencyID,
 		Description: fmt.Sprintf("Rimossa Agenzia #%d dall'Operatore #%d", *agencyID, *operatorID),

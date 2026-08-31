@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 
 	"example/go_backoffice/dto/agent_node"
 	"example/go_backoffice/dto/user"
@@ -115,9 +116,9 @@ func (s *agentNodeService) CreateNode(request *user.UserRequest, actor policies.
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "CREATE_AGENT_NODE",
-		TargetType:  "AgentNode",
-		TargetID:    &newNode.ID,
+		Action:      enums.Create,
+		TargetType:  reflect.TypeOf(newNode.Agent).Elem().Name(),
+		TargetID:    &newNode.AgentID,
 		Description: fmt.Sprintf("Creato nuovo nodo Agente #%d (User ID: %d)", newNode.ID, newNode.AgentID),
 	})
 
@@ -202,8 +203,8 @@ func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) 
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "DELETE_AGENT_NODE",
-		TargetType:  "AgentNode",
+		Action:      enums.Delete,
+		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
 		TargetID:    &agentID,
 		Description: fmt.Sprintf("Eliminato nodo Agente #%d e relativa sottostruttura", agentID),
 	})
@@ -220,8 +221,8 @@ func (s *agentNodeService) RestoreNode(agentID uint, actor policies.AuthContext)
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "RESTORE_AGENT_NODE",
-		TargetType:  "AgentNode",
+		Action:      enums.Restore,
+		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
 		TargetID:    &agentID,
 		Description: fmt.Sprintf("Ripristinato nodo Agente #%d e sottostruttura", agentID),
 	})
@@ -264,8 +265,8 @@ func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor pol
 	_ = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
-		Action:      "MOVE_AGENT_NODE",
-		TargetType:  "AgentNode",
+		Action:      enums.Move,
+		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
 		TargetID:    &request.UserID,
 		Description: fmt.Sprintf("Spostato nodo Agente #%d sotto %s", request.UserID, targetText),
 	})
