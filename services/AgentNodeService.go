@@ -113,7 +113,7 @@ func (s *agentNodeService) CreateNode(request *user.UserRequest, actor policies.
 	}
 
 	// Log dell'attività
-	_ = s.logService.NewLog(&models.ActivityLog{
+	err = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Create,
@@ -121,6 +121,10 @@ func (s *agentNodeService) CreateNode(request *user.UserRequest, actor policies.
 		TargetID:    &newNode.AgentID,
 		Description: fmt.Sprintf("Creato nuovo nodo Agente #%d (User ID: %d)", newNode.ID, newNode.AgentID),
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	response := mappers.ToAgentNodeResponse(newNode)
 	return &response, nil
@@ -200,7 +204,7 @@ func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) 
 	}
 
 	// Log dell'attività
-	_ = s.logService.NewLog(&models.ActivityLog{
+	err = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Delete,
@@ -208,6 +212,10 @@ func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) 
 		TargetID:    &agentID,
 		Description: fmt.Sprintf("Eliminato nodo Agente #%d e relativa sottostruttura", agentID),
 	})
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -218,7 +226,7 @@ func (s *agentNodeService) RestoreNode(agentID uint, actor policies.AuthContext)
 	}
 
 	// Log dell'attività
-	_ = s.logService.NewLog(&models.ActivityLog{
+	err := s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Restore,
@@ -226,6 +234,10 @@ func (s *agentNodeService) RestoreNode(agentID uint, actor policies.AuthContext)
 		TargetID:    &agentID,
 		Description: fmt.Sprintf("Ripristinato nodo Agente #%d e sottostruttura", agentID),
 	})
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -262,7 +274,7 @@ func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor pol
 	}
 
 	// Log dell'attività
-	_ = s.logService.NewLog(&models.ActivityLog{
+	err = s.logService.NewLog(&models.ActivityLog{
 		ActorID:     &actor.UserID,
 		ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Move,
@@ -270,6 +282,10 @@ func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor pol
 		TargetID:    &request.UserID,
 		Description: fmt.Sprintf("Spostato nodo Agente #%d sotto %s", request.UserID, targetText),
 	})
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

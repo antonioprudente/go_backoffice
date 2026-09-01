@@ -145,7 +145,9 @@ func main() {
 		middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
 	)
 	{
-		notes.POST("", noteController.AssignNote) // POST /notes
+		notes.POST("", noteController.AssignNote)     // POST /notes
+		notes.GET("", noteController.GetAllNotes)     // GET /notes
+		notes.GET("/:id", noteController.GetNoteByID) // GET /notes/:id
 	}
 
 	router.Run("localhost:9090")

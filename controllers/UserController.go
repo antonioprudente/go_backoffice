@@ -49,7 +49,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	response, err := c.service.CreateUser(&newUserReq, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {
@@ -94,7 +94,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 	response, err := c.service.UpdateUser(uid, &updateUserRequest, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {
@@ -151,7 +151,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	response, err := c.service.GetUserByIDAndRole(uid, targetRole.(string), actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {
@@ -174,7 +174,7 @@ func (c *UserController) GetPersonalProfile(ctx *gin.Context) {
 	response, err := c.service.GetUserByIDAndRole(actor.UserID, actor.Role, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {
@@ -212,7 +212,7 @@ func (c *UserController) ActiveUserById(ctx *gin.Context) {
 	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusActive, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "Utente non trovato"})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {
@@ -251,7 +251,7 @@ func (c *UserController) SuspendUserById(ctx *gin.Context) {
 	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusSuspended, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "Utente non trovato"})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "Utente non trovato"})
 			return
 		}
 
@@ -291,7 +291,7 @@ func (c *UserController) BlockUserById(ctx *gin.Context) {
 	response, err := c.service.ChangeStatus(userID, targetRole.(string), enums.StatusBlocked, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {
@@ -327,7 +327,7 @@ func (c *UserController) ChangeForeignID(ctx *gin.Context) {
 	response, err := c.service.ChangeForeignID(request, targetRole.(string), actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {

@@ -91,7 +91,7 @@ func (c *AgentController) DeleteAgent(ctx *gin.Context) {
 	err = c.nodeService.DeleteNode(uid, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {
@@ -121,7 +121,7 @@ func (c *AgentController) RestoreAgent(ctx *gin.Context) {
 	err = c.nodeService.RestoreNode(uid, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {
@@ -150,7 +150,7 @@ func (c *AgentController) MoveAgent(ctx *gin.Context) {
 	err = c.nodeService.MoveNode(request, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {

@@ -1,4 +1,3 @@
-// mappers/NoteMapper.go
 package mappers
 
 import (
@@ -7,6 +6,9 @@ import (
 )
 
 func ToNoteModel(req *note.NoteRequest) *models.Note {
+	if req == nil {
+		return nil
+	}
 	return &models.Note{
 		ActorID:  req.ActorID,
 		TargetID: req.TargetID,
@@ -15,6 +17,9 @@ func ToNoteModel(req *note.NoteRequest) *models.Note {
 }
 
 func ToNoteResponse(model *models.Note) *note.NoteResponse {
+	if model == nil {
+		return nil
+	}
 	return &note.NoteResponse{
 		ID:        model.ID,
 		ActorID:   model.ActorID,
@@ -23,4 +28,12 @@ func ToNoteResponse(model *models.Note) *note.NoteResponse {
 		CreatedAt: model.CreatedAt,
 		UpdatedAt: model.UpdatedAt,
 	}
+}
+
+func ToNoteResponses(notes []*models.Note) []*note.NoteResponse {
+	res := make([]*note.NoteResponse, len(notes))
+	for i := range notes {
+		res[i] = ToNoteResponse(notes[i])
+	}
+	return res
 }

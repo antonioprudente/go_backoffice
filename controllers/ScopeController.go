@@ -36,7 +36,7 @@ func (c *ScopeController) AssignToOperator(ctx *gin.Context) {
 	response, err := c.service.AssignToOperator(request, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, policies.ErrForbidden) {

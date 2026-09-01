@@ -22,7 +22,7 @@ func (c *ActivityLogController) ActivityLog(ctx *gin.Context) {
 	logs, err := c.service.GetActivity()
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli utenti"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero dei log"})
 		return
 	}
 	ctx.JSON(http.StatusOK, logs)
