@@ -145,9 +145,11 @@ func main() {
 		middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
 	)
 	{
-		notes.POST("", noteController.AssignNote)     // POST /notes
-		notes.GET("", noteController.GetAllNotes)     // GET /notes
-		notes.GET("/:id", noteController.GetNoteByID) // GET /notes/:id
+		notes.POST("", noteController.AssignNote)       // POST /notes
+		notes.GET("", noteController.GetAllNotes)       // GET /notes
+		notes.GET("/:id", noteController.GetNoteByID)   // GET /notes/:id
+		notes.PUT("/:id", noteController.UpdateNote)    // PUT /notes/:id
+		notes.DELETE("/:id", noteController.DeleteNote) // DELETE /notes/:id
 	}
 
 	router.Run("localhost:9090")

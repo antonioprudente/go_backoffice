@@ -9,12 +9,16 @@ import (
 	"example/go_backoffice/repositories"
 	"fmt"
 	"reflect"
+
+	"gorm.io/gorm"
 )
 
 type NoteService interface {
 	AssignNote(req *note.NoteRequest, actor policies.AuthContext) (*note.NoteResponse, error)
 	GetNoteByID(id uint, actor policies.AuthContext) (*note.NoteResponse, error)
 	GetAllNotes(actor policies.AuthContext) ([]*note.NoteResponse, error)
+	UpdateNote(id uint, req *note.NoteRequest, actor policies.AuthContext) (*note.NoteResponse, error)
+	DeleteNote(id uint, actor policies.AuthContext) error
 }
 
 type noteService struct {
@@ -113,6 +117,15 @@ func (s *noteService) UpdateNote(id uint, req *note.NoteRequest, actor policies.
 		return nil, err
 	}
 
+	target, err := s.userRepo.GetByID(existing.TargetID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.policy.View(actor, target); err != nil {
+		return nil, err
+	}
+
 	if req.Content != "" || existing.Content != req.Content {
 		existing.Content = req.Content
 	}
@@ -134,4 +147,42 @@ func (s *noteService) UpdateNote(id uint, req *note.NoteRequest, actor policies.
 	}
 
 	return mappers.ToNoteResponse(existing), nil
+}
+
+func (s *noteService) DeleteNote(id uint, actor policies.AuthContext) error {
+	existing, err := s.repo.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	target, err := s.userRepo.GetByID(existing.TargetID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.policy.View(actor, target); err != nil {
+		return err
+	}
+
+	deleted, err := s.repo.Delete(id)
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		return gorm.ErrRecordNotFound
+	}
+
+	err = s.logService.NewLog(&models.ActivityLog{
+		ActorID:     &actor.UserID,
+		ActorRole:   enums.Role(actor.Role),
+		Action:      enums.Delete,
+		TargetType:  reflect.TypeOf(existing).Elem().Name(),
+		TargetID:    &id,
+		Description: fmt.Sprintf("Eliminata la nota %d associata all'utente %d", existing.ID, existing.TargetID),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
