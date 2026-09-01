@@ -19,11 +19,11 @@ func ConnectDB() *gorm.DB {
 		log.Println("Nessun file .env trovato, uso le variabili d'ambiente di sistema")
 	}
 
-	user := GetEnv("DB_USER", "root")
+	user := GetEnv("DB_USER", "")
 	password := GetEnv("DB_PASSWORD", "")
-	host := GetEnv("DB_HOST", "127.0.0.1")
-	port := GetEnv("DB_PORT", "3306")
-	dbName := GetEnv("DB_NAME", "nome_db")
+	host := GetEnv("DB_HOST", "")
+	port := GetEnv("DB_PORT", "")
+	dbName := GetEnv("DB_NAME", "")
 
 	// Crea il database se non esiste già, prima di connettersi ad esso.
 	if err := ensureDatabaseExists(user, password, host, port, dbName); err != nil {
@@ -48,6 +48,7 @@ func ConnectDB() *gorm.DB {
 		&models.AgentNode{},
 		&models.AgentOperator{},
 		&models.AgencyOperator{},
+		&models.Note{},
 		&models.ActivityLog{},
 	)
 	if err != nil {

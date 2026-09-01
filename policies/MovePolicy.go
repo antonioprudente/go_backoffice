@@ -103,7 +103,7 @@ func (p *MovePolicy) moveAsOperator(actor AuthContext, target *models.User, newP
 		if newParent.Role != enums.RoleAgency {
 			return ErrForbidden
 		}
-		targetAssigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignId)
+		targetAssigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignID)
 
 		if err != nil {
 			return err
@@ -131,15 +131,15 @@ func (p *MovePolicy) moveAsAgent(actor AuthContext, target *models.User, newPare
 
 	switch target.Role {
 	case enums.RoleAgency:
-		if target.ForeignId == nil {
+		if target.ForeignID == nil {
 			return ErrMissingRelation
 		}
 
 		// L'agenzia "appartiene" al sottoalbero tramite l'agente a cui è
-		// agganciata (ForeignId), non tramite il proprio ID: sia l'agente
+		// agganciata (ForeignID), non tramite il proprio ID: sia l'agente
 		// proprietario attuale sia il nuovo agente di destinazione devono
 		// trovarsi nel tuo sottoalbero.
-		if !slices.Contains(descendants, *target.ForeignId) {
+		if !slices.Contains(descendants, *target.ForeignID) {
 			return ErrForbidden
 		}
 
@@ -171,12 +171,12 @@ func (p *MovePolicy) moveAsAgent(actor AuthContext, target *models.User, newPare
 			return ErrMissingRelation
 		}
 
-		nowParent, err := p.userRepo.GetByIDAndRole(*target.ForeignId, enums.RoleUser.String())
+		nowParent, err := p.userRepo.GetByIDAndRole(*target.ForeignID, enums.RoleUser.String())
 		if err != nil {
 			return err
 		}
 
-		if !slices.Contains(descendants, *nowParent.ForeignId) || !slices.Contains(descendants, newParent.ID) {
+		if !slices.Contains(descendants, *nowParent.ForeignID) || !slices.Contains(descendants, newParent.ID) {
 			return ErrForbidden
 		}
 	}

@@ -53,35 +53,28 @@ func InitAuthController(db *gorm.DB) *controllers.AuthController {
 	return nil
 }
 
-func InitAgentOperatorController(db *gorm.DB) *controllers.AgentOperatorController {
-	wire.Build(
-		repositories.NewAgentOperatorRepository,
-		repositories.NewUserRepository,
-		repositories.NewActivityLogRepository,
-		services.NewAgentOperatorService,
-		services.NewActivityLogService,
-		controllers.NewAgentOperatorController,
-	)
-	return nil
-}
-
-func InitAgencyOperatorController(db *gorm.DB) *controllers.AgencyOperatorController {
-	wire.Build(
-		repositories.NewAgencyOperatorRepository,
-		repositories.NewUserRepository,
-		repositories.NewActivityLogRepository,
-		services.NewAgencyOperatorService,
-		services.NewActivityLogService,
-		controllers.NewAgencyOperatorController,
-	)
-	return nil
-}
-
 func InitScopeController(db *gorm.DB) *controllers.ScopeController {
 	wire.Build(
 		repositories.NewScopeRepository,
+		repositories.NewUserRepository,
+		repositories.NewActivityLogRepository,
 		services.NewScopeService,
-		controllers.NewScopeControllerController,
+		services.NewActivityLogService,
+		controllers.NewScopeController,
+	)
+	return nil
+}
+
+func InitNoteController(db *gorm.DB) *controllers.NoteController {
+	wire.Build(
+		repositories.NewNoteRepository,
+		repositories.NewActivityLogRepository,
+		repositories.NewUserRepository,
+		repositories.NewScopeRepository,
+		policies.NewUserPolicy,
+		services.NewNoteService,
+		services.NewActivityLogService,
+		controllers.NewNoteController,
 	)
 	return nil
 }

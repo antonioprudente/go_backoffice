@@ -61,10 +61,10 @@ func (p *DeletePolicy) deleteAsOperator(actor AuthContext, target *models.User) 
 		return nil
 
 	case enums.RoleUser:
-		if target.ForeignId == nil {
+		if target.ForeignID == nil {
 			return ErrMissingRelation
 		}
-		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignId)
+		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignID)
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func (p *DeletePolicy) deleteAsAgent(actor AuthContext, target *models.User) err
 		return ErrForbidden
 
 	case enums.RoleAgent, enums.RoleAgency:
-		if target.ForeignId == nil {
+		if target.ForeignID == nil {
 			if target.Role == enums.RoleAgent {
 				return ErrForbidden
 			}
@@ -94,21 +94,21 @@ func (p *DeletePolicy) deleteAsAgent(actor AuthContext, target *models.User) err
 		if err != nil {
 			return err
 		}
-		if actor.UserID != *target.ForeignId && !slices.Contains(children, *target.ForeignId) {
+		if actor.UserID != *target.ForeignID && !slices.Contains(children, *target.ForeignID) {
 			return ErrForbidden
 		}
 		return nil
 
 	case enums.RoleUser:
-		agency, err := p.userRepo.GetByIDAndRole(*target.ForeignId, enums.RoleAgency.String())
+		agency, err := p.userRepo.GetByIDAndRole(*target.ForeignID, enums.RoleAgency.String())
 		if err != nil {
 			return err
 		}
-		children, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(*agency.ForeignId)
+		children, err := p.scopeRepo.NodeChildrenAndSelfAgentIds(*agency.ForeignID)
 		if err != nil {
 			return err
 		}
-		if !slices.Contains(children, *target.ForeignId) {
+		if !slices.Contains(children, *target.ForeignID) {
 			return ErrForbidden
 		}
 		return nil

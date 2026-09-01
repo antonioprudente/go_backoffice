@@ -19,9 +19,8 @@ func main() {
 	userController := InitUserController(db)
 	agentController := InitAgentController(db)
 	authController := InitAuthController(db)
-	agencyOperatorController := InitAgencyOperatorController(db)
-	agentOperatorController := InitAgentOperatorController(db)
 	scopeController := InitScopeController(db)
+	noteController := InitNoteController(db)
 	activityLogController := InitActivityLogController(db)
 
 	// Setup Router
@@ -81,13 +80,7 @@ func main() {
 			middlewares.RequireRoles(enums.RoleAdmin.String()),
 		)
 		{
-			pivot.POST("/assign", scopeController.AssignToOperator)                                               // POST /operator/assign
-			pivot.POST("/to/agency", agencyOperatorController.AssignAgencyToOperator)                             // POST /operator/to/agency
-			pivot.POST("/to/agent", agentOperatorController.AssignAgentToOperator)                                // POST /operator/to/agent
-			pivot.POST("/to/agencies", agencyOperatorController.AssignAgenciesToOperator)                         // POST /operator/to/agencies
-			pivot.POST("/to/agents", agentOperatorController.AssignAgentsToOperator)                              // POST /operator/to/agents
-			pivot.DELETE("/:operatorID/from/agency/:agencyID", agencyOperatorController.RemoveAgencyFromOperator) // DELETE /operator/:operatorID/from/agency/:agencyID
-			pivot.DELETE("/:operatorID/from/agent/:agentID", agentOperatorController.RemoveAgentFromOperator)     // DELETE /operator/:operatorID/from/agent/:agentID
+			pivot.POST("/assign", scopeController.AssignToOperator) // POST /operator/assign
 		}
 
 		// AGENTS CALLS
@@ -145,6 +138,14 @@ func main() {
 			users.PATCH("/:id/block", userController.BlockUserById)     // PATCH /users/:id/block
 			users.DELETE("/:id", userController.DeleteUser)             // DELETE /users/:id
 		}
+	}
+
+	notes := protected.Group("/notes")
+	notes.Use(
+		middlewares.RequireRoles(enums.RoleAdmin.String(), enums.RoleOperator.String()),
+	)
+	{
+		notes.POST("", noteController.AssignNote) // POST /notes
 	}
 
 	router.Run("localhost:9090")

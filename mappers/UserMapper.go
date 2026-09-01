@@ -19,8 +19,8 @@ func ToUserModel(req *user.UserRequest) *models.User {
 		Password:  req.Password,
 	}
 
-	if req.ForeignId != nil {
-		model.ForeignId = req.ForeignId
+	if req.ForeignID != nil {
+		model.ForeignID = req.ForeignID
 	}
 
 	return model
@@ -41,7 +41,7 @@ func ToUserResponse(u *models.User) user.UserResponse {
 		Role:      u.Role,
 		Status:    u.Status,
 		Email:     u.Email,
-		ForeignId: u.ForeignId,
+		ForeignID: u.ForeignID,
 	}
 
 	if u.Foreign != nil {

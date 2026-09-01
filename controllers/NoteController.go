@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"errors"
-	"example/go_backoffice/dto/pivot"
+	"example/go_backoffice/dto/note"
 	"example/go_backoffice/middlewares"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/services"
@@ -12,18 +12,18 @@ import (
 	"gorm.io/gorm"
 )
 
-type ScopeController struct {
-	service services.ScopeService
+type NoteController struct {
+	service services.NoteService
 }
 
-func NewScopeController(service services.ScopeService) *ScopeController {
-	return &ScopeController{service: service}
+func NewNoteController(service services.NoteService) *NoteController {
+	return &NoteController{service: service}
 }
 
-func (c *ScopeController) AssignToOperator(ctx *gin.Context) {
-	var request pivot.ArraysToOpRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati non validi"})
+func (c *NoteController) AssignNote(ctx *gin.Context) {
+	var req note.NoteRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Dati nota non validi"})
 		return
 	}
 
@@ -32,8 +32,9 @@ func (c *ScopeController) AssignToOperator(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
+	req.ActorID = actor.UserID
 
-	response, err := c.service.AssignToOperator(request, actor)
+	response, err := c.service.AssignNote(&req, actor)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
@@ -43,8 +44,8 @@ func (c *ScopeController) AssignToOperator(ctx *gin.Context) {
 			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, response)
+	ctx.JSON(http.StatusCreated, response)
 }

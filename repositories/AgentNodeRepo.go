@@ -20,7 +20,7 @@ type AgentNodeRepo interface {
 	GetNodeByAgentID(agentID uint) (*models.AgentNode, error)
 	DeleteAgentNodeAndAgentByAgentID(agentID uint) error
 	RestoreAgentSubtree(rootAgentID uint) error
-	MoveNode(agentID uint, foreignID *uint) error
+	MoveNode(agentID uint, ForeignID *uint) error
 }
 
 type agentNodeRepo struct {
@@ -230,10 +230,10 @@ func (r *agentNodeRepo) buildTreeWithAgencies(nodes []*models.AgentNode, allowed
 		}
 
 		for _, agency := range agencies {
-			if agency.ForeignId == nil {
+			if agency.ForeignID == nil {
 				continue
 			}
-			key := *agency.ForeignId
+			key := *agency.ForeignID
 			agenciesByAgent[key] = append(agenciesByAgent[key], agency)
 		}
 	}
@@ -361,7 +361,7 @@ func (r *agentNodeRepo) DeleteAgentNodeAndAgentByAgentID(agentID uint) error {
 }
 
 // RestoreAgentSubtree ripristina un agente eliminato (e tutto il suo sottoalbero)
-// ricostruendo gli AgentNode a partire dai ForeignId rimasti sugli User soft-deleted.
+// ricostruendo gli AgentNode a partire dai ForeignID rimasti sugli User soft-deleted.
 // NB: le posizioni esatte lft/rgt e l'ordine tra fratelli non sono garantiti identici
 // all'originale, ma la struttura genitore-figlio viene ripristinata fedelmente.
 func (r *agentNodeRepo) RestoreAgentSubtree(rootAgentID uint) error {
@@ -376,7 +376,7 @@ func (r *agentNodeRepo) RestoreAgentSubtree(rootAgentID uint) error {
 		}
 
 		// BFS: raccoglie l'intero sottoalbero di agenti eliminati seguendo
-		// la catena dei ForeignId (parent -> children). L'ordine di visita
+		// la catena dei ForeignID (parent -> children). L'ordine di visita
 		// garantisce che ogni genitore venga elaborato prima dei suoi figli.
 		subtreeAgents := []models.User{rootUser}
 		queue := []uint{rootUser.ID}
@@ -441,8 +441,8 @@ func (r *agentNodeRepo) RestoreAgentSubtree(rootAgentID uint) error {
 			}
 
 			var parentNodeID *uint
-			if agent.ForeignId != nil {
-				parentNode, err := nodeRepo.GetNodeByAgentID(*agent.ForeignId)
+			if agent.ForeignID != nil {
+				parentNode, err := nodeRepo.GetNodeByAgentID(*agent.ForeignID)
 				if err != nil {
 					return fmt.Errorf("nodo padre non trovato per l'agente %d: %w", agent.ID, err)
 				}
@@ -463,12 +463,12 @@ func (r *agentNodeRepo) RestoreAgentSubtree(rootAgentID uint) error {
 }
 
 // MoveNode sposta il nodo identificato da agentID (e tutto il suo sottoalbero).
-// Se foreignID è nil, il nodo diventa una nuova radice (root); altrimenti viene
-// spostato come ultimo figlio del nodo il cui agent_id è *foreignID.
+// Se ForeignID è nil, il nodo diventa una nuova radice (root); altrimenti viene
+// spostato come ultimo figlio del nodo il cui agent_id è *ForeignID.
 // Aggiorna lft/rgt di tutta la tabella secondo le regole del nested set
 // e il ParentID del nodo spostato.
-func (r *agentNodeRepo) MoveNode(agentID uint, foreignID *uint) error {
-	if foreignID != nil && agentID == *foreignID {
+func (r *agentNodeRepo) MoveNode(agentID uint, ForeignID *uint) error {
+	if ForeignID != nil && agentID == *ForeignID {
 		return fmt.Errorf("impossibile spostare il nodo %d sotto se stesso", agentID)
 	}
 
@@ -481,15 +481,15 @@ func (r *agentNodeRepo) MoveNode(agentID uint, foreignID *uint) error {
 		}
 
 		var newParentNode *models.AgentNode
-		if foreignID != nil {
+		if ForeignID != nil {
 			var np models.AgentNode
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-				Where("agent_id = ?", *foreignID).
+				Where("agent_id = ?", *ForeignID).
 				First(&np).Error; err != nil {
 				return err
 			}
 			if np.Lft >= node.Lft && np.Rgt <= node.Rgt {
-				return fmt.Errorf("impossibile spostare il nodo %d sotto se stesso o un suo discendente (foreign_id %d)", agentID, *foreignID)
+				return fmt.Errorf("impossibile spostare il nodo %d sotto se stesso o un suo discendente (foreign_id %d)", agentID, *ForeignID)
 			}
 			newParentNode = &np
 		}

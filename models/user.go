@@ -15,6 +15,6 @@ type User struct {
 	Status    enums.Status `json:"status" gorm:"type:enum('ACTIVE', 'SUSPENDED', 'BLOCKED', 'DEFAULT')"`
 	Email     string       `json:"email" gorm:"unique;not null"`
 	Password  string       `json:"password" gorm:"not null"`
-	ForeignId *uint        `json:"foreign_id" gorm:"index"`
+	ForeignID *uint        `json:"foreign_id" gorm:"index"`
 	Foreign   *User        `json:"foreign" gorm:"foreignKey:ForeignId"`
 }

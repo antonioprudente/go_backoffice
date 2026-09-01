@@ -68,10 +68,10 @@ func (p *ViewPolicy) viewAsOperator(actor AuthContext, target *models.User) erro
 		return nil
 
 	case enums.RoleUser:
-		if target.ForeignId == nil {
+		if target.ForeignID == nil {
 			return ErrMissingRelation
 		}
-		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignId)
+		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignID)
 		if err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ func (p *ViewPolicy) viewAsAgent(actor AuthContext, target *models.User) error {
 		return ErrForbidden
 
 	case enums.RoleAgent, enums.RoleAgency:
-		if target.ForeignId == nil {
+		if target.ForeignID == nil {
 			if target.Role == enums.RoleAgent {
 				return ErrForbidden
 			}
@@ -101,13 +101,13 @@ func (p *ViewPolicy) viewAsAgent(actor AuthContext, target *models.User) error {
 		if err != nil {
 			return err
 		}
-		if actor.UserID != *target.ForeignId && !slices.Contains(children, *target.ForeignId) {
+		if actor.UserID != *target.ForeignID && !slices.Contains(children, *target.ForeignID) {
 			return ErrForbidden
 		}
 		return nil
 
 	case enums.RoleUser:
-		agency, err := p.userRepo.GetByIDAndRole(*target.ForeignId, enums.RoleAgency.String())
+		agency, err := p.userRepo.GetByIDAndRole(*target.ForeignID, enums.RoleAgency.String())
 		if err != nil {
 			return err
 		}
@@ -115,7 +115,7 @@ func (p *ViewPolicy) viewAsAgent(actor AuthContext, target *models.User) error {
 		if err != nil {
 			return err
 		}
-		if !slices.Contains(children, *agency.ForeignId) {
+		if !slices.Contains(children, *agency.ForeignID) {
 			return ErrForbidden
 		}
 		return nil

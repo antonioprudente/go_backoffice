@@ -73,11 +73,11 @@ func (s *agentNodeService) CreateNode(request *user.UserRequest, actor policies.
 		agentNodeRepo := s.repo.WithTx(tx)
 		agentOpRepo := s.agentOpRepo.WithTx(tx)
 
-		// Se è presente un ForeignId, il nuovo nodo va agganciato come figlio
-		// del nodo dell'agente a cui il ForeignId fa riferimento
+		// Se è presente un ForeignID, il nuovo nodo va agganciato come figlio
+		// del nodo dell'agente a cui il ForeignID fa riferimento
 		var parentId *uint
-		if request.ForeignId != nil {
-			parentNode, err := agentNodeRepo.GetNodeByAgentID(*request.ForeignId)
+		if request.ForeignID != nil {
+			parentNode, err := agentNodeRepo.GetNodeByAgentID(*request.ForeignID)
 			if err != nil {
 				return err
 			}

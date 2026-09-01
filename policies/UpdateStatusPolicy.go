@@ -63,10 +63,10 @@ func (p *UpdateStatusPolicy) updateStatusAsOperator(actor AuthContext, target *m
 		return nil
 
 	case enums.RoleUser:
-		if target.ForeignId == nil {
+		if target.ForeignID == nil {
 			return ErrMissingRelation
 		}
-		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignId)
+		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignID)
 		if err != nil {
 			return err
 		}
@@ -104,10 +104,10 @@ func (p *UpdateStatusPolicy) updateStatusAsAgent(actor AuthContext, target *mode
 		return nil
 
 	case enums.RoleUser:
-		if target.ForeignId == nil {
+		if target.ForeignID == nil {
 			return ErrMissingRelation
 		}
-		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignId)
+		assigned, err := p.scopeRepo.IsAgencyAssignedToOperator(actor.UserID, *target.ForeignID)
 		if err != nil {
 			return err
 		}

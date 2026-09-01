@@ -30,7 +30,6 @@ func NewScopeRepository(db *gorm.DB) ScopeRepo {
 }
 
 func (r *scopeRepo) AssignToOperator(operatorID uint, agentIds []uint, agencyIds []uint) (*pivot.ArraysToOpResponse, error) {
-	// Inizializza la risposta impostando l'OperatorId
 	response := &pivot.ArraysToOpResponse{
 		OperatorId: operatorID,
 	}
@@ -41,6 +40,19 @@ func (r *scopeRepo) AssignToOperator(operatorID uint, agentIds []uint, agencyIds
 			return err
 		}
 
+		// --- Elimina le vecchie associazioni AGENTI per questo operatore ---
+		if err := tx.Where("operator_id = ?", operatorID).
+			Delete(&models.AgentOperator{}).Error; err != nil {
+			return err
+		}
+
+		// --- Elimina le vecchie associazioni AGENZIE per questo operatore ---
+		if err := tx.Where("operator_id = ?", operatorID).
+			Delete(&models.AgencyOperator{}).Error; err != nil {
+			return err
+		}
+
+		// --- Inserisce le nuove associazioni AGENTI ---
 		if len(agentIds) > 0 {
 			agentOperators := make([]models.AgentOperator, 0, len(agentIds))
 			for _, agentId := range agentIds {
@@ -52,10 +64,10 @@ func (r *scopeRepo) AssignToOperator(operatorID uint, agentIds []uint, agencyIds
 			if err := tx.Create(&agentOperators).Error; err != nil {
 				return err
 			}
-			// Assegna la slice di ID alla risposta
 			response.AgentIds = &agentIds
 		}
 
+		// --- Inserisce le nuove associazioni AGENZIE ---
 		if len(agencyIds) > 0 {
 			agencyOperators := make([]models.AgencyOperator, 0, len(agencyIds))
 			for _, agencyId := range agencyIds {
@@ -67,7 +79,6 @@ func (r *scopeRepo) AssignToOperator(operatorID uint, agentIds []uint, agencyIds
 			if err := tx.Create(&agencyOperators).Error; err != nil {
 				return err
 			}
-			// Assegna la slice di ID alla risposta
 			response.AgencyIds = &agencyIds
 		}
 

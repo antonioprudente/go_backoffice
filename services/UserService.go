@@ -148,8 +148,8 @@ func (s *userService) UpdateUser(id uint, request *user.UserRequest, actor polic
 	if request.Email != "" || existing.Email != request.Email {
 		existing.Email = request.Email
 	}
-	if request.ForeignId != nil || existing.ForeignId != request.ForeignId {
-		existing.ForeignId = request.ForeignId
+	if request.ForeignID != nil || existing.ForeignID != request.ForeignID {
+		existing.ForeignID = request.ForeignID
 	}
 
 	if request.Password != "" {

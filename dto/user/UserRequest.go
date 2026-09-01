@@ -8,5 +8,5 @@ type UserRequest struct {
 	Role      string `json:"role,omitempty"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
-	ForeignId *uint  `json:"foreign_id,omitempty"`
+	ForeignID *uint  `json:"foreign_id,omitempty"`
 }

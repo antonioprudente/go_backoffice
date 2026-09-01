@@ -13,6 +13,7 @@ type UserRepo interface {
 	WithTx(tx *gorm.DB) UserRepo
 
 	GetAllByRole(role string) ([]models.User, error)
+	GetByID(id uint) (*models.User, error)
 	GetByIDAndRole(id uint, role string) (*models.User, error)
 	GetByUsername(username string) (*models.User, error)
 	GetByEmail(email string) (*models.User, error)
@@ -43,6 +44,14 @@ func (r *userRepo) GetAllByRole(role string) ([]models.User, error) {
 	var users []models.User
 	err := r.db.Where("role = ?", role).Find(&users).Error
 	return users, err
+}
+
+func (r *userRepo) GetByID(id uint) (*models.User, error) {
+	var user models.User
+	if err := r.db.Where("id = ?", id).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (r *userRepo) GetByIDAndRole(id uint, role string) (*models.User, error) {

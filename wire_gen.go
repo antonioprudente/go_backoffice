@@ -50,31 +50,26 @@ func InitAuthController(db *gorm.DB) *controllers.AuthController {
 	return authController
 }
 
-func InitAgentOperatorController(db *gorm.DB) *controllers.AgentOperatorController {
-	agentOperatorRepo := repositories.NewAgentOperatorRepository(db)
-	userRepo := repositories.NewUserRepository(db)
-	activityLogRepo := repositories.NewActivityLogRepository(db)
-	activityLogService := services.NewActivityLogService(activityLogRepo)
-	agentOperatorService := services.NewAgentOperatorService(agentOperatorRepo, userRepo, activityLogService)
-	agentOperatorController := controllers.NewAgentOperatorController(agentOperatorService)
-	return agentOperatorController
-}
-
-func InitAgencyOperatorController(db *gorm.DB) *controllers.AgencyOperatorController {
-	agencyOperatorRepo := repositories.NewAgencyOperatorRepository(db)
-	userRepo := repositories.NewUserRepository(db)
-	activityLogRepo := repositories.NewActivityLogRepository(db)
-	activityLogService := services.NewActivityLogService(activityLogRepo)
-	agencyOperatorService := services.NewAgencyOperatorService(agencyOperatorRepo, userRepo, activityLogService)
-	agencyOperatorController := controllers.NewAgencyOperatorController(agencyOperatorService)
-	return agencyOperatorController
-}
-
 func InitScopeController(db *gorm.DB) *controllers.ScopeController {
 	scopeRepo := repositories.NewScopeRepository(db)
-	scopeService := services.NewScopeService(scopeRepo)
-	scopeController := controllers.NewScopeControllerController(scopeService)
+	userRepo := repositories.NewUserRepository(db)
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
+	scopeService := services.NewScopeService(scopeRepo, userRepo, activityLogService)
+	scopeController := controllers.NewScopeController(scopeService)
 	return scopeController
+}
+
+func InitNoteController(db *gorm.DB) *controllers.NoteController {
+	noteRepo := repositories.NewNoteRepository(db)
+	userRepo := repositories.NewUserRepository(db)
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
+	scopeRepo := repositories.NewScopeRepository(db)
+	userPolicy := policies.NewUserPolicy(scopeRepo, userRepo)
+	noteService := services.NewNoteService(noteRepo, userRepo, activityLogService, userPolicy)
+	noteController := controllers.NewNoteController(noteService)
+	return noteController
 }
 
 func InitActivityLogController(db *gorm.DB) *controllers.ActivityLogController {
