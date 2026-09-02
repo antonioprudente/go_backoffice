@@ -56,7 +56,7 @@ func (r *userRepo) GetByID(id uint) (*models.User, error) {
 
 func (r *userRepo) GetByIDAndRole(id uint, role string) (*models.User, error) {
 	var user models.User
-	if err := r.db.Where("id = ?", id).Where("role = ?", role).First(&user).Error; err != nil {
+	if err := r.db.Preload("Foreign").Where("id = ?", id).Where("role = ?", role).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -96,7 +96,7 @@ func (r *userRepo) UpdateStatusByIdAndRole(id uint, role string, status string) 
 		return nil, result.Error
 	}
 	if result.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound // oppure un errore custom tipo "utente non trovato per questo ruolo"
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	var updatedUser models.User

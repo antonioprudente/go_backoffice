@@ -34,19 +34,22 @@ func ToUserResponse(u *models.User) user.UserResponse {
 	}
 
 	resp := user.UserResponse{
-		Id:        int(u.ID), // Riga 31 che prima andava in crash
+		Id:        int(u.ID),
 		FirstName: u.FirstName,
 		LastName:  u.LastName,
 		Username:  u.Username,
 		Role:      u.Role,
 		Status:    u.Status,
 		Email:     u.Email,
-		ForeignID: u.ForeignID,
 	}
 
 	if u.Foreign != nil {
 		foreignResp := ToUserResponse(u.Foreign)
 		resp.Foreign = &foreignResp
+	}
+
+	if u.Foreign == nil && u.ForeignID != nil {
+		resp.ForeignID = u.ForeignID
 	}
 
 	return resp

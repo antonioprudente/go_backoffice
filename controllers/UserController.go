@@ -116,10 +116,14 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 	}
 	targetRole := roleVal.(string)
 
+	actor, err := middlewares.ActorFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
 	var users []user.UserResponse
-
-	users, err := c.service.GetAllByRole(targetRole)
-
+	users, err = c.service.GetAllByRole(targetRole, actor)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli utenti"})
 		return

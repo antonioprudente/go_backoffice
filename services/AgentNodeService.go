@@ -208,7 +208,7 @@ func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) 
 		ActorID: &actor.UserID,
 		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Delete,
-		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
+		TargetType:  reflect.TypeOf(target).Elem().Name(),
 		TargetID:    &agentID,
 		Description: fmt.Sprintf("Eliminato nodo Agente #%d e relativa sottostruttura", agentID),
 	})
@@ -230,7 +230,7 @@ func (s *agentNodeService) RestoreNode(agentID uint, actor policies.AuthContext)
 		ActorID: &actor.UserID,
 		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Restore,
-		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
+		TargetType:  reflect.TypeOf(models.User{}).Name(),
 		TargetID:    &agentID,
 		Description: fmt.Sprintf("Ripristinato nodo Agente #%d e sottostruttura", agentID),
 	})

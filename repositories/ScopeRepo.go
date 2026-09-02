@@ -9,7 +9,8 @@ import (
 
 type ScopeRepo interface {
 	AssignToOperator(operatorID uint, agentIds []uint, agencyIds []uint) (*pivot.ArraysToOpResponse, error)
-	IsAgentAssignedToOperator(operatorID, agentID uint) (bool, error)
+
+	IsAgentAssignedToOperator(operatorID uint, agentID uint) (bool, error)
 	IsAgencyAssignedToOperator(operatorID uint, agencyID uint) (bool, error)
 	AssignedAgentIDs(operatorID uint) ([]uint, error)
 	AssignedAgencyIDs(operatorID uint) ([]uint, error)
@@ -92,7 +93,7 @@ func (r *scopeRepo) AssignToOperator(operatorID uint, agentIds []uint, agencyIds
 	return response, nil
 }
 
-func (r *scopeRepo) IsAgentAssignedToOperator(operatorID, agentID uint) (bool, error) {
+func (r *scopeRepo) IsAgentAssignedToOperator(operatorID uint, agentID uint) (bool, error) {
 	var count int64
 	err := r.db.Model(&models.AgentOperator{}).
 		Where("operator_id = ? AND agent_id = ?", operatorID, agentID).

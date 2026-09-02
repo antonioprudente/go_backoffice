@@ -16,7 +16,7 @@ import (
 )
 
 type UserService interface {
-	GetAllByRole(role string) ([]user.UserResponse, error)
+	GetAllByRole(role string, actor policies.AuthContext) ([]user.UserResponse, error)
 	GetUserByIDAndRole(id uint, targetRole string, actor policies.AuthContext) (*user.UserResponse, error)
 	CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	UpdateUser(id uint, request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
@@ -54,12 +54,94 @@ func NewUserService(
 
 var ErrUnauthorized = errors.New("non hai i permessi per accedere a questa risorsa")
 
-func (s *userService) GetAllByRole(role string) ([]user.UserResponse, error) {
-	list, err := s.repo.GetAllByRole(role)
+func (s *userService) GetAllByRole(role string, actor policies.AuthContext) ([]user.UserResponse, error) {
+	list, err := s.scopedList(role, actor)
 	if err != nil {
 		return nil, err
 	}
 	return mappers.ToUserResponses(list), nil
+}
+
+func (s *userService) scopedList(role string, actor policies.AuthContext) ([]models.User, error) {
+	switch actor.Role {
+
+	case enums.RoleAdmin.String():
+		return s.repo.GetAllByRole(role)
+
+	case enums.RoleOperator.String():
+		return s.scopedListForOperator(role, actor.UserID)
+
+	case enums.RoleAgent.String():
+		return s.scopedListForAgent(role, actor.UserID)
+
+	case enums.RoleAgency.String():
+		if role != enums.RoleUser.String() {
+			return nil, policies.ErrForbidden
+		}
+		return s.repo.GetAllByRoleAndForeignIDs(role, []uint{actor.UserID})
+	}
+
+	return nil, policies.ErrUnknownRole
+}
+
+// scopedListForOperator usa le tabelle pivot agent_operator / agency_operator
+func (s *userService) scopedListForOperator(role string, operatorID uint) ([]models.User, error) {
+	switch role {
+	case enums.RoleAgent.String():
+		ids, err := s.scopeRepo.AssignedAgentIDs(operatorID)
+		if err != nil {
+			return nil, err
+		}
+		return s.repo.GetAllByRoleAndIDs(role, ids)
+
+	case enums.RoleAgency.String():
+		ids, err := s.scopeRepo.AssignedAgencyIDs(operatorID)
+		if err != nil {
+			return nil, err
+		}
+		return s.repo.GetAllByRoleAndIDs(role, ids)
+
+	case enums.RoleUser.String():
+		agencyIDs, err := s.scopeRepo.AssignedAgencyIDs(operatorID)
+		if err != nil {
+			return nil, err
+		}
+		return s.repo.GetAllByRoleAndForeignIDs(role, agencyIDs)
+	}
+
+	return nil, policies.ErrForbidden
+}
+
+// scopedListForAgent usa il nested set (agent_nodes): self + discendenti
+func (s *userService) scopedListForAgent(role string, agentID uint) ([]models.User, error) {
+	scopeIDs, err := s.scopeRepo.NodeChildrenAndSelfAgentIds(agentID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []models.User{}, nil // agente senza nodo -> nessun risultato, non un errore
+		}
+		return nil, err
+	}
+
+	switch role {
+	case enums.RoleAgent.String():
+		return s.repo.GetAllByRoleAndIDs(role, scopeIDs)
+
+	case enums.RoleAgency.String():
+		return s.repo.GetAllByRoleAndForeignIDs(role, scopeIDs)
+
+	case enums.RoleUser.String():
+		agencies, err := s.repo.GetAllByRoleAndForeignIDs(enums.RoleAgency.String(), scopeIDs)
+		if err != nil {
+			return nil, err
+		}
+		agencyIDs := make([]uint, len(agencies))
+		for i, a := range agencies {
+			agencyIDs[i] = a.ID
+		}
+		return s.repo.GetAllByRoleAndForeignIDs(role, agencyIDs)
+	}
+
+	return nil, policies.ErrForbidden
 }
 
 func (s *userService) GetUserByIDAndRole(id uint, targetRole string, actor policies.AuthContext) (*user.UserResponse, error) {
