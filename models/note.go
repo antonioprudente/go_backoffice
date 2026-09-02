@@ -5,8 +5,8 @@ import "gorm.io/gorm"
 type Note struct {
 	gorm.Model
 	Content  string `gorm:"type:text" json:"content"`
-	ActorID  uint   `gorm:"index;column:actor_id;not null" json:"actor_id"`
-	TargetID uint   `gorm:"index;column:target_id;not null" json:"target_id"`
+	ActorID  *uint  `gorm:"index;column:actor_id;not null" json:"actor_id,omitempty"`
+	TargetID *uint  `gorm:"index;column:target_id;not null" json:"target_id,omitempty"`
 
 	// Relazioni verso la tabella users
 	Actor  *User `gorm:"foreignKey:ActorID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"actor,omitempty"`

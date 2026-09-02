@@ -39,7 +39,7 @@ func (r *noteRepo) NewNote(note models.Note) (*models.Note, error) {
 
 func (r *noteRepo) GetByID(id uint) (*models.Note, error) {
 	var note models.Note
-	err := r.db.Where("id = ?", id).First(&note).Error
+	err := r.db.Preload("Actor").Preload("Target").Where("id = ?", id).First(&note).Error
 	if err != nil {
 		return nil, err
 	}

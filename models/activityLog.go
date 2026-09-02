@@ -17,10 +17,6 @@ type ActivityLog struct {
 	ActorID *uint `json:"actor_id" gorm:"index"`
 	Actor   *User `json:"actor,omitempty" gorm:"foreignKey:ActorID"`
 
-	// Ruolo dell'attore al momento dell'azione (snapshot: il ruolo potrebbe
-	// cambiare in futuro, ma il log deve restare storicamente accurato)
-	ActorRole enums.Role `json:"role" gorm:"type:enum('ADMIN', 'OPERATOR', 'AGENT', 'AGENCY', 'USER')"`
-
 	// Tipo di azione compiuta
 	Action enums.Action `json:"action" gorm:"type:enum('CREATE', 'UPDATE', 'DELETE', 'RESTORE', 'ASSIGNMENT', 'REMOVE', 'MOVE', 'ACTIVE', 'SUSPEND', 'BLOCK')"`
 
@@ -30,7 +26,6 @@ type ActivityLog struct {
 
 	// ID dell'entità target, nullable per azioni senza target
 	TargetID *uint `json:"target_id" gorm:"index"`
-
 	// Descrizione testuale leggibile dell'evento (es. "Operatore #3 ha
 	// sospeso l'utente #12")
 	Description string `json:"description" gorm:"type:text"`

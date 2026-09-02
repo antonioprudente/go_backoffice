@@ -9,6 +9,7 @@ import (
 type ActivityLogRepo interface {
 	Create(log *models.ActivityLog) error
 	GetAll() ([]*models.ActivityLog, error)
+	GetByID(id uint) (*models.ActivityLog, error)
 }
 
 type activityLogRepo struct {
@@ -27,4 +28,13 @@ func (r *activityLogRepo) GetAll() ([]*models.ActivityLog, error) {
 	var logs []*models.ActivityLog
 	err := r.db.Find(&logs).Error
 	return logs, err
+}
+
+func (r *activityLogRepo) GetByID(id uint) (*models.ActivityLog, error) {
+	var log models.ActivityLog
+	err := r.db.Preload("Actor").Where("id = ?", id).First(&log).Error
+	if err != nil {
+		return nil, err
+	}
+	return &log, nil
 }

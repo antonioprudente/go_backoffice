@@ -114,8 +114,8 @@ func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthC
 
 	// Activity Log - Creazione Utente
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Create,
 		TargetType:  reflect.TypeOf(newUser).Elem().Name(),
 		TargetID:    &newUser.ID,
@@ -170,8 +170,8 @@ func (s *userService) UpdateUser(id uint, request *user.UserRequest, actor polic
 
 	// Activity Log - Aggiornamento Dati
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Update,
 		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &existing.ID,
@@ -215,8 +215,8 @@ func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.
 
 	// Activity Log - Cambio Stato
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      action,
 		TargetType:  reflect.TypeOf(updated).Elem().Name(),
 		TargetID:    &updated.ID,
@@ -262,8 +262,8 @@ func (s *userService) ChangeForeignID(request user.ChangeForeignRequest, targetR
 
 	// Activity Log - Spostamento Relazionale
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Move,
 		TargetType:  reflect.TypeOf(updated).Elem().Name(),
 		TargetID:    &updated.ID,
@@ -293,8 +293,8 @@ func (s *userService) DeleteUserByIdAndRole(id uint, targetRole string, actor po
 
 	// Activity Log - Eliminazione
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Delete,
 		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
 		TargetID:    &id,

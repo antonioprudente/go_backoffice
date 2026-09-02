@@ -114,8 +114,8 @@ func (s *agentNodeService) CreateNode(request *user.UserRequest, actor policies.
 
 	// Log dell'attività
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Create,
 		TargetType:  reflect.TypeOf(newNode.Agent).Elem().Name(),
 		TargetID:    &newNode.AgentID,
@@ -205,8 +205,8 @@ func (s *agentNodeService) DeleteNode(agentID uint, actor policies.AuthContext) 
 
 	// Log dell'attività
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Delete,
 		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
 		TargetID:    &agentID,
@@ -227,8 +227,8 @@ func (s *agentNodeService) RestoreNode(agentID uint, actor policies.AuthContext)
 
 	// Log dell'attività
 	err := s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Restore,
 		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
 		TargetID:    &agentID,
@@ -275,8 +275,8 @@ func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor pol
 
 	// Log dell'attività
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Move,
 		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
 		TargetID:    &request.UserID,

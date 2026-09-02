@@ -10,8 +10,8 @@ func ToNoteModel(req *note.NoteRequest) *models.Note {
 		return nil
 	}
 	return &models.Note{
-		ActorID:  req.ActorID,
-		TargetID: req.TargetID,
+		ActorID:  &req.ActorID,
+		TargetID: &req.TargetID,
 		Content:  req.Content,
 	}
 }
@@ -20,14 +20,31 @@ func ToNoteResponse(model *models.Note) *note.NoteResponse {
 	if model == nil {
 		return nil
 	}
-	return &note.NoteResponse{
+
+	response := &note.NoteResponse{
 		ID:        model.ID,
-		ActorID:   model.ActorID,
-		TargetID:  model.TargetID,
 		Content:   model.Content,
 		CreatedAt: model.CreatedAt,
 		UpdatedAt: model.UpdatedAt,
 	}
+
+	var checkIds = model.ActorID != nil && model.TargetID != nil
+	var checkEnt = model.Actor != nil && model.Target != nil
+
+	if checkIds && !checkEnt {
+		response.ActorID = model.ActorID
+		response.TargetID = model.TargetID
+	}
+
+	if checkEnt {
+		actorResp := ToUserResponse(model.Actor)
+		targetResp := ToUserResponse(model.Target)
+
+		response.Actor = &actorResp
+		response.Target = &targetResp
+	}
+
+	return response
 }
 
 func ToNoteResponses(notes []*models.Note) []*note.NoteResponse {

@@ -74,8 +74,8 @@ func (s *scopeService) AssignToOperator(request pivot.ArraysToOpRequest, actor p
 
 	// Activity Log - Aggiornamento Dati
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Assignment,
 		TargetType:  reflect.TypeOf(&models.User{}).Elem().Name(), // Restituisce "User" in sicurezza
 		TargetID:    &response.OperatorId,

@@ -60,8 +60,8 @@ func (s *noteService) AssignNote(req *note.NoteRequest, actor policies.AuthConte
 	}
 
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Create,
 		TargetType:  reflect.TypeOf(newNote).Elem().Name(),
 		TargetID:    &newNote.ID,
@@ -81,7 +81,7 @@ func (s *noteService) GetNoteByID(id uint, actor policies.AuthContext) (*note.No
 		return nil, err
 	}
 
-	target, err := s.userRepo.GetByID(note.TargetID)
+	target, err := s.userRepo.GetByID(*note.TargetID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (s *noteService) UpdateNote(id uint, req *note.NoteRequest, actor policies.
 		return nil, err
 	}
 
-	target, err := s.userRepo.GetByID(existing.TargetID)
+	target, err := s.userRepo.GetByID(*existing.TargetID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,8 +135,8 @@ func (s *noteService) UpdateNote(id uint, req *note.NoteRequest, actor policies.
 	}
 
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Update,
 		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &existing.ID,
@@ -155,7 +155,7 @@ func (s *noteService) DeleteNote(id uint, actor policies.AuthContext) error {
 		return err
 	}
 
-	target, err := s.userRepo.GetByID(existing.TargetID)
+	target, err := s.userRepo.GetByID(*existing.TargetID)
 	if err != nil {
 		return err
 	}
@@ -173,8 +173,8 @@ func (s *noteService) DeleteNote(id uint, actor policies.AuthContext) error {
 	}
 
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID:     &actor.UserID,
-		ActorRole:   enums.Role(actor.Role),
+		ActorID: &actor.UserID,
+		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Delete,
 		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &id,

@@ -36,12 +36,13 @@ func main() {
 		protected.POST("/logout", authController.Logout) //POST /logout (non ancora implementato)
 		protected.GET("/profile", userController.GetPersonalProfile)
 
-		admin := protected.Group("")
-		admin.Use(
+		logs := protected.Group("/logs")
+		logs.Use(
 			middlewares.RequireRoles(enums.RoleAdmin.String()),
 		)
 		{
-			admin.GET("/logs", activityLogController.ActivityLog) // GET /logs
+			logs.GET("", activityLogController.ActivityLog)            // GET /logs
+			logs.GET("/:id", activityLogController.ActivityLogDetails) // GET /logs/:id
 		}
 
 		// OPERATORS
