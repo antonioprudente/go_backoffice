@@ -278,7 +278,7 @@ func (s *agentNodeService) MoveNode(request user.ChangeForeignRequest, actor pol
 		ActorID: &actor.UserID,
 		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Move,
-		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
+		TargetType:  reflect.TypeOf(target).Elem().Name(),
 		TargetID:    &request.UserID,
 		Description: fmt.Sprintf("Spostato nodo Agente #%d sotto %s", request.UserID, targetText),
 	})

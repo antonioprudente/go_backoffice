@@ -378,7 +378,7 @@ func (s *userService) DeleteUserByIdAndRole(id uint, targetRole string, actor po
 		ActorID: &actor.UserID,
 		//ActorRole:   enums.Role(actor.Role),
 		Action:      enums.Delete,
-		TargetType:  reflect.TypeOf(models.User{}).Elem().Name(),
+		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &id,
 		Description: fmt.Sprintf("Eliminato l'utente '%s' (Ruolo: %s)", existing.Username, targetRole),
 	})
