@@ -154,7 +154,13 @@ func (s *userService) GetUserByIDAndRole(id uint, targetRole string, actor polic
 		return nil, err
 	}
 
+	linkedUsers, err := s.repo.GetAllByForeignID(target.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	response := mappers.ToUserResponse(target)
+	response.LinkedUsers = mappers.ToUserResponses(linkedUsers)
 	return &response, nil
 }
 

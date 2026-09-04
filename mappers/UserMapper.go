@@ -34,7 +34,7 @@ func ToUserResponse(u *models.User) user.UserResponse {
 	}
 
 	resp := user.UserResponse{
-		Id:        int(u.ID),
+		Id:        u.ID,
 		FirstName: u.FirstName,
 		LastName:  u.LastName,
 		Username:  u.Username,

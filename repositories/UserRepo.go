@@ -26,6 +26,7 @@ type UserRepo interface {
 
 	GetAllByRoleAndIDs(role string, ids []uint) ([]models.User, error)
 	GetAllByRoleAndForeignIDs(role string, foreignIDs []uint) ([]models.User, error)
+	GetAllByForeignID(foreignID uint) ([]models.User, error)
 }
 
 type userRepo struct {
@@ -144,6 +145,15 @@ func (r *userRepo) GetAllByRoleAndForeignIDs(role string, foreignIDs []uint) ([]
 		return users, nil
 	}
 	err := r.db.Where("role = ? AND foreign_id IN ?", role, foreignIDs).Find(&users).Error
+	return users, err
+}
+
+// GetAllByForeignID recupera tutti gli utenti (di qualsiasi ruolo) il cui
+// foreign_id punta all'ID indicato (es. le AGENCY collegate a un AGENT,
+// gli USER collegati a un'AGENCY, ecc.)
+func (r *userRepo) GetAllByForeignID(foreignID uint) ([]models.User, error) {
+	var users []models.User
+	err := r.db.Where("foreign_id = ?", foreignID).Find(&users).Error
 	return users, err
 }
 
