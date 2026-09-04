@@ -494,6 +494,14 @@ func (r *agentNodeRepo) MoveNode(agentID uint, ForeignID *uint) error {
 			newParentNode = &np
 		}
 
+		// Update("colonna", valore) scrive il valore così com'è, incluso nil -> NULL,
+		// a differenza di Updates(struct{}) che salterebbe i puntatori nil.
+		if err := tx.Model(&models.User{}).
+			Where("id = ?", agentID).
+			Update("foreign_id", ForeignID).Error; err != nil {
+			return err
+		}
+
 		// Cattura l'intero sottoalbero (radice + discendenti), ordinato per lft
 		// così l'ordine relativo tra fratelli viene preservato al reinserimento
 		var subtree []models.AgentNode
@@ -555,12 +563,19 @@ func (r *agentNodeRepo) MoveNode(agentID uint, ForeignID *uint) error {
 	})
 }
 
-// insertNodeUnderParent inserisce un AgentNode con AgentID già esistente
-// come ultimo figlio del nodo con ID = parentNodeID (o come nuova root se
-// parentNodeID è nil). È la stessa logica di shift usata in Create(), estratta
-// per essere riusabile anche in fase di reinserimento (UpdateTree).
+// insertNodeUnderParent inserisce (o reinserisce) il nodo con il dato agentID
+// come ultimo figlio del nodo il cui ID è parentNodeID.
+// Se parentNodeID è nil, il nodo diventa una nuova radice: il ParentID DEVE
+// essere scritto come NULL, non semplicemente "non toccato". Con Updates(struct)
+// GORM ignora i campi a valore zero (incluso un puntatore nil), quindi qui
+// usiamo Create (che scrive sempre tutte le colonne) e, in ogni punto in cui
+// in futuro si volesse fare un Update, va sempre usato Select("ParentID")
+// o una map esplicita per garantire la scrittura del NULL.
 func (r *agentNodeRepo) insertNodeUnderParent(tx *gorm.DB, agentID uint, parentNodeID *uint) (*models.AgentNode, error) {
-	nodeModel := &models.AgentNode{AgentID: agentID, ParentID: parentNodeID}
+	newNode := &models.AgentNode{
+		AgentID:  agentID,
+		ParentID: parentNodeID, // può essere nil: va bene, Create scrive sempre la colonna
+	}
 
 	if parentNodeID == nil {
 		var lastRoot models.AgentNode
@@ -571,18 +586,19 @@ func (r *agentNodeRepo) insertNodeUnderParent(tx *gorm.DB, agentID uint, parentN
 
 		switch {
 		case err == nil:
-			nodeModel.Lft = lastRoot.Rgt + 1
-			nodeModel.Rgt = nodeModel.Lft + 1
+			newNode.Lft = lastRoot.Rgt + 1
+			newNode.Rgt = newNode.Lft + 1
 		case errors.Is(err, gorm.ErrRecordNotFound):
-			nodeModel.Lft = 1
-			nodeModel.Rgt = 2
+			newNode.Lft = 1
+			newNode.Rgt = 2
 		default:
 			return nil, err
 		}
-		if err := tx.Create(nodeModel).Error; err != nil {
+
+		if err := tx.Create(newNode).Error; err != nil {
 			return nil, err
 		}
-		return nodeModel, nil
+		return newNode, nil
 	}
 
 	var parent models.AgentNode
@@ -590,6 +606,7 @@ func (r *agentNodeRepo) insertNodeUnderParent(tx *gorm.DB, agentID uint, parentN
 		First(&parent, *parentNodeID).Error; err != nil {
 		return nil, err
 	}
+
 	parentRgt := parent.Rgt
 
 	if err := tx.Model(&models.AgentNode{}).
@@ -601,13 +618,13 @@ func (r *agentNodeRepo) insertNodeUnderParent(tx *gorm.DB, agentID uint, parentN
 		return nil, err
 	}
 
-	nodeModel.Lft = parentRgt
-	nodeModel.Rgt = parentRgt + 1
+	newNode.Lft = parentRgt
+	newNode.Rgt = parentRgt + 1
 
-	if err := tx.Create(nodeModel).Error; err != nil {
+	if err := tx.Create(newNode).Error; err != nil {
 		return nil, err
 	}
-	return nodeModel, nil
+	return newNode, nil
 }
 
 // deleteSubtree rimuove il nodo e tutti i suoi discendenti, richiudendo
