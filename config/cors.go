@@ -9,7 +9,7 @@ import (
 // CORS gestisce le intestazioni CORS per il frontend React
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		allowedOrigin := "http://localhost:5174" // Sostituisci con l'URL esatto del tuo frontend
+		allowedOrigin := "http://localhost:5173" // Sostituisci con l'URL esatto del tuo frontend
 
 		c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
