@@ -140,7 +140,7 @@ func (s *noteService) UpdateNote(id uint, req *note.NoteRequest, actor policies.
 		Action:      enums.Update,
 		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &existing.ID,
-		Description: fmt.Sprintf("Aggiornata la nota %d associata all'utente %d", existing.ID, existing.TargetID),
+		Description: fmt.Sprintf("Aggiornata la nota %d associata all'utente %d", existing.ID, *existing.TargetID),
 	})
 	if err != nil {
 		return nil, err
