@@ -6,12 +6,12 @@ import (
 )
 
 type NoteResponse struct {
-	ID        uint               `json:"id"`
-	ActorID   *uint              `json:"actor_id,omitempty"`
-	TargetID  *uint              `json:"target_id,omitempty"`
-	Actor     *user.UserResponse `json:"actor,omitempty"`
-	Target    *user.UserResponse `json:"target,omitempty"`
-	Content   string             `json:"content"`
-	CreatedAt time.Time          `json:"created_at"`
-	UpdatedAt time.Time          `json:"updated_at"`
+	ID             uint               `json:"id"`
+	ActorUsername  *string            `json:"actor_username,omitempty"`
+	TargetUsername *string            `json:"target_username,omitempty"`
+	Actor          *user.UserResponse `json:"actor,omitempty"`
+	Target         *user.UserResponse `json:"target,omitempty"`
+	Content        string             `json:"content"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
 }

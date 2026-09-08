@@ -26,7 +26,7 @@ func (r *activityLogRepo) Create(log *models.ActivityLog) error {
 
 func (r *activityLogRepo) GetAll() ([]*models.ActivityLog, error) {
 	var logs []*models.ActivityLog
-	err := r.db.Find(&logs).Error
+	err := r.db.Order("created_at desc").Find(&logs).Error
 	return logs, err
 }
 

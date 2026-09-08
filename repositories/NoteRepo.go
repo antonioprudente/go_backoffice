@@ -48,7 +48,11 @@ func (r *noteRepo) GetByID(id uint) (*models.Note, error) {
 
 func (r *noteRepo) GetAll() ([]*models.Note, error) {
 	var notes []*models.Note
-	err := r.db.Find(&notes).Error
+	err := r.db.
+		Order("created_at desc").
+		Preload("Actor").
+		Preload("Target").
+		Find(&notes).Error
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +61,11 @@ func (r *noteRepo) GetAll() ([]*models.Note, error) {
 
 func (r *noteRepo) GetAllByActorID(actorID uint) ([]*models.Note, error) {
 	var notes []*models.Note
-	err := r.db.Where("actor_id = ?", actorID).Find(&notes).Error
+	err := r.db.
+		Preload("Actor").
+		Preload("Target").
+		Where("actor_id = ?", actorID).
+		Find(&notes).Error
 	if err != nil {
 		return nil, err
 	}

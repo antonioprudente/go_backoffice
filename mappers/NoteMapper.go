@@ -16,7 +16,7 @@ func ToNoteModel(req *note.NoteRequest) *models.Note {
 	}
 }
 
-func ToNoteResponse(model *models.Note) *note.NoteResponse {
+func ToNoteResponse(model *models.Note, isFull bool) *note.NoteResponse {
 	if model == nil {
 		return nil
 	}
@@ -28,19 +28,22 @@ func ToNoteResponse(model *models.Note) *note.NoteResponse {
 		UpdatedAt: model.UpdatedAt,
 	}
 
-	var checkIds = model.ActorID != nil && model.TargetID != nil
-	var checkEnt = model.Actor != nil && model.Target != nil
-
-	if checkIds && !checkEnt {
-		response.ActorID = model.ActorID
-		response.TargetID = model.TargetID
+	if !isFull {
+		if model.Actor != nil {
+			response.ActorUsername = &model.Actor.Username
+		}
+		if model.Target != nil {
+			response.TargetUsername = &model.Target.Username
+		}
+		return response
 	}
 
-	if checkEnt {
+	if model.Actor != nil {
 		actorResp := ToUserResponse(model.Actor)
-		targetResp := ToUserResponse(model.Target)
-
 		response.Actor = &actorResp
+	}
+	if model.Target != nil {
+		targetResp := ToUserResponse(model.Target)
 		response.Target = &targetResp
 	}
 
@@ -50,7 +53,7 @@ func ToNoteResponse(model *models.Note) *note.NoteResponse {
 func ToNoteResponses(notes []*models.Note) []*note.NoteResponse {
 	res := make([]*note.NoteResponse, len(notes))
 	for i := range notes {
-		res[i] = ToNoteResponse(notes[i])
+		res[i] = ToNoteResponse(notes[i], false)
 	}
 	return res
 }

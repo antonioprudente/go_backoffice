@@ -71,7 +71,7 @@ func (s *noteService) AssignNote(req *note.NoteRequest, actor policies.AuthConte
 		return nil, err
 	}
 
-	res := mappers.ToNoteResponse(newNote)
+	res := mappers.ToNoteResponse(newNote, true)
 	return res, nil
 }
 
@@ -90,7 +90,7 @@ func (s *noteService) GetNoteByID(id uint, actor policies.AuthContext) (*note.No
 		return nil, err
 	}
 
-	response := mappers.ToNoteResponse(note)
+	response := mappers.ToNoteResponse(note, true)
 	return response, nil
 }
 
@@ -146,7 +146,7 @@ func (s *noteService) UpdateNote(id uint, req *note.NoteRequest, actor policies.
 		return nil, err
 	}
 
-	return mappers.ToNoteResponse(existing), nil
+	return mappers.ToNoteResponse(existing, true), nil
 }
 
 func (s *noteService) DeleteNote(id uint, actor policies.AuthContext) error {
@@ -178,7 +178,7 @@ func (s *noteService) DeleteNote(id uint, actor policies.AuthContext) error {
 		Action:      enums.Delete,
 		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &id,
-		Description: fmt.Sprintf("Eliminata la nota %d associata all'utente %d", existing.ID, existing.TargetID),
+		Description: fmt.Sprintf("Eliminata la nota %d associata all'utente %d", existing.ID, *existing.TargetID),
 	})
 	if err != nil {
 		return err
