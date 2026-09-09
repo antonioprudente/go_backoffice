@@ -159,9 +159,90 @@ func (s *userService) GetUserByIDAndRole(id uint, targetRole string, actor polic
 		return nil, err
 	}
 
+	linkedUsers, err = s.filterLinkedUsersForActor(linkedUsers, actor)
+	if err != nil {
+		return nil, err
+	}
+
 	response := mappers.ToUserResponse(target)
 	response.LinkedUsers = mappers.ToUserResponses(linkedUsers)
 	return &response, nil
+}
+
+// filterLinkedUsersForActor applica lo scoping ai collegati (agenti/agenzie/utenti
+// con foreign_id = target.ID) in base al ruolo dell'attore che ha effettuato la
+// richiesta. Per l'OPERATOR lo scope è dato dalle pivot agent_operator / agency_operator.
+func (s *userService) filterLinkedUsersForActor(linkedUsers []models.User, actor policies.AuthContext) ([]models.User, error) {
+	switch actor.Role {
+	case enums.RoleAdmin.String():
+		// L'ADMIN vede tutto, nessun filtro
+		return linkedUsers, nil
+
+	case enums.RoleOperator.String():
+		agentIDs, err := s.scopeRepo.AssignedAgentIDs(actor.UserID)
+		if err != nil {
+			return nil, err
+		}
+		agencyIDs, err := s.scopeRepo.AssignedAgencyIDs(actor.UserID)
+		if err != nil {
+			return nil, err
+		}
+		agentSet := toSet(agentIDs)
+		agencySet := toSet(agencyIDs)
+
+		filtered := make([]models.User, 0, len(linkedUsers))
+		for _, u := range linkedUsers {
+			switch u.Role {
+			case enums.RoleAgent:
+				if agentSet[u.ID] {
+					filtered = append(filtered, u)
+				}
+			case enums.RoleAgency:
+				if agencySet[u.ID] {
+					filtered = append(filtered, u)
+				}
+			case enums.RoleUser:
+				// Uno USER è visibile solo se la sua agenzia (ForeignID) è
+				// assegnata all'operatore
+				if u.ForeignID != nil && agencySet[*u.ForeignID] {
+					filtered = append(filtered, u)
+				}
+			}
+		}
+		return filtered, nil
+
+	case enums.RoleAgent.String():
+		scopeIDs, err := s.scopeRepo.NodeChildrenAndSelfAgentIds(actor.UserID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return []models.User{}, nil
+			}
+			return nil, err
+		}
+		scopeSet := toSet(scopeIDs)
+
+		filtered := make([]models.User, 0, len(linkedUsers))
+		for _, u := range linkedUsers {
+			switch u.Role {
+			case enums.RoleAgent:
+				if scopeSet[u.ID] {
+					filtered = append(filtered, u)
+				}
+			case enums.RoleAgency:
+				if u.ForeignID != nil && scopeSet[*u.ForeignID] {
+					filtered = append(filtered, u)
+				}
+			case enums.RoleUser:
+				filtered = append(filtered, u) // eventualmente da restringere ulteriormente
+			}
+		}
+		return filtered, nil
+
+	default:
+		// AGENCY / USER: già scoperti dalla propria policy.View sul target,
+		// nessun filtro aggiuntivo necessario
+		return linkedUsers, nil
+	}
 }
 
 func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error) {

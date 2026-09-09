@@ -28,6 +28,18 @@ func (p *CreatePolicy) Check(actor AuthContext, target *models.User) error {
 
 	case enums.RoleAgent.String():
 		return p.createAsAgent(actor, target)
+
+	case enums.RoleAgency.String():
+		if target.ForeignID == nil {
+			return ErrMissingRelation
+		}
+		if target.Role != enums.RoleUser {
+			return ErrForbidden
+		}
+		if *target.ForeignID != actor.UserID {
+			return ErrForbidden
+		}
+		return nil
 	}
 
 	return ErrForbidden
