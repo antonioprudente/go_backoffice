@@ -13,6 +13,7 @@ import (
 
 type ScopeService interface {
 	AssignToOperator(request pivot.ArraysToOpRequest, actor policies.AuthContext) (*pivot.ArraysToOpResponse, error)
+	AssignedToOperator(operatorID uint) (*pivot.ArraysToOpResponse, error)
 }
 
 type scopeService struct {
@@ -167,4 +168,29 @@ func (s *scopeService) validateContiguousAgentSubtree(agentIds []uint) error {
 	}
 
 	return nil
+}
+
+func (s *scopeService) AssignedToOperator(operatorID uint) (*pivot.ArraysToOpResponse, error) {
+	var response pivot.ArraysToOpResponse
+	_, err := s.userRepo.GetByID(operatorID)
+	if err != nil {
+		return nil, err
+	}
+
+	response.OperatorId = operatorID
+	agencyIds, err := s.repo.AssignedAgencyIDs(operatorID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	response.AgencyIds = &agencyIds
+
+	agentIds, err := s.repo.AssignedAgentIDs(operatorID)
+	if err != nil {
+		return nil, err
+	}
+	response.AgentIds = &agentIds
+
+	return &response, nil
 }

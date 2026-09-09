@@ -7,6 +7,7 @@ import (
 	"example/go_backoffice/policies"
 	"example/go_backoffice/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -34,6 +35,31 @@ func (c *ScopeController) AssignToOperator(ctx *gin.Context) {
 	}
 
 	response, err := c.service.AssignToOperator(request, actor)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, response)
+}
+
+func (c *ScopeController) AssignedToOperator(ctx *gin.Context) {
+	id := ctx.Param("id")
+	uid64, err := strconv.ParseUint(id, 10, 0)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID non valido"})
+		return
+	}
+	uid := uint(uid64)
+
+	response, err := c.service.AssignedToOperator(uid)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})

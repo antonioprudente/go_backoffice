@@ -81,7 +81,8 @@ func main() {
 			middlewares.RequireRoles(enums.RoleAdmin.String()),
 		)
 		{
-			pivot.POST("/assign", scopeController.AssignToOperator) // POST /operator/assign
+			pivot.POST("/assign", scopeController.AssignToOperator)        // POST /operator/assign
+			pivot.GET("/:id/assigned", scopeController.AssignedToOperator) // GET /operator/assigned
 		}
 
 		// AGENTS CALLS
