@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"example/go_backoffice/dto/user"
 	"example/go_backoffice/models"
 
 	"gorm.io/gorm"
@@ -12,7 +13,7 @@ import (
 type UserRepo interface {
 	WithTx(tx *gorm.DB) UserRepo
 
-	GetAllByRole(role string) ([]models.User, error)
+	GetAllByRole(role string, filter user.UserFilter) ([]models.User, error)
 	GetByID(id uint) (*models.User, error)
 	GetByIDAndRole(id uint, role string) (*models.User, error)
 	GetByUsername(username string) (*models.User, error)
@@ -24,9 +25,9 @@ type UserRepo interface {
 
 	DeleteByIdAndRole(id uint, role string) error
 
-	GetAllByRoleAndIDs(role string, ids []uint) ([]models.User, error)
-	GetAllByRoleAndForeignIDs(role string, foreignIDs []uint) ([]models.User, error)
-	GetAllByForeignID(foreignID uint) ([]models.User, error)
+	GetAllByRoleAndIDs(role string, ids []uint, filter user.UserFilter) ([]models.User, error)
+	GetAllByRoleAndForeignIDs(role string, foreignIDs []uint, filter user.UserFilter) ([]models.User, error)
+	GetAllByForeignID(foreignID uint, filter user.UserFilter) ([]models.User, error)
 }
 
 type userRepo struct {
@@ -41,9 +42,11 @@ func (r *userRepo) WithTx(tx *gorm.DB) UserRepo {
 	return &userRepo{db: tx}
 }
 
-func (r *userRepo) GetAllByRole(role string) ([]models.User, error) {
+func (r *userRepo) GetAllByRole(role string, filter user.UserFilter) ([]models.User, error) {
 	var users []models.User
-	err := r.db.Where("role = ?", role).Find(&users).Error
+	q := r.db.Where("role = ?", role)
+	q = applyUserFilter(q, filter)
+	err := q.Find(&users).Error
 	return users, err
 }
 
@@ -87,7 +90,6 @@ func (r *userRepo) Update(user *models.User) error {
 	return r.db.Save(user).Error
 }
 
-// Implementazione
 func (r *userRepo) UpdateStatusByIdAndRole(id uint, role string, status string) (*models.User, error) {
 	result := r.db.Model(&models.User{}).
 		Where("id = ? AND role = ?", id, role).
@@ -126,34 +128,33 @@ func parseID(id string) (uint, error) {
 	return uint(parsed), nil
 }
 
-// GetAllByRoleAndIDs filtra per ruolo e per un set di ID (usato per OPERATOR->agenti
-// o AGENT->propri sottoagenti)
-func (r *userRepo) GetAllByRoleAndIDs(role string, ids []uint) ([]models.User, error) {
+func (r *userRepo) GetAllByRoleAndIDs(role string, ids []uint, filter user.UserFilter) ([]models.User, error) {
 	var users []models.User
 	if len(ids) == 0 {
 		return users, nil
 	}
-	err := r.db.Where("role = ? AND id IN ?", role, ids).Find(&users).Error
+	q := r.db.Where("role = ? AND id IN ?", role, ids)
+	q = applyUserFilter(q, filter)
+	err := q.Find(&users).Error
 	return users, err
 }
 
-// GetAllByRoleAndForeignIDs filtra per ruolo (tipicamente AGENCY) e per un set di
-// foreign_id (gli AgentID a cui sono agganciate)
-func (r *userRepo) GetAllByRoleAndForeignIDs(role string, foreignIDs []uint) ([]models.User, error) {
+func (r *userRepo) GetAllByRoleAndForeignIDs(role string, foreignIDs []uint, filter user.UserFilter) ([]models.User, error) {
 	var users []models.User
 	if len(foreignIDs) == 0 {
 		return users, nil
 	}
-	err := r.db.Where("role = ? AND foreign_id IN ?", role, foreignIDs).Find(&users).Error
+	q := r.db.Where("role = ? AND foreign_id IN ?", role, foreignIDs)
+	q = applyUserFilter(q, filter)
+	err := q.Find(&users).Error
 	return users, err
 }
 
-// GetAllByForeignID recupera tutti gli utenti (di qualsiasi ruolo) il cui
-// foreign_id punta all'ID indicato (es. le AGENCY collegate a un AGENT,
-// gli USER collegati a un'AGENCY, ecc.)
-func (r *userRepo) GetAllByForeignID(foreignID uint) ([]models.User, error) {
+func (r *userRepo) GetAllByForeignID(foreignID uint, filter user.UserFilter) ([]models.User, error) {
 	var users []models.User
-	err := r.db.Where("foreign_id = ?", foreignID).Find(&users).Error
+	q := r.db.Where("foreign_id = ?", foreignID)
+	q = applyUserFilter(q, filter)
+	err := q.Find(&users).Error
 	return users, err
 }
 
@@ -170,4 +171,15 @@ func (r *userRepo) UpdateForeignID(id uint, role string, foreignID uint) (*model
 	}
 
 	return r.GetByIDAndRole(id, role)
+}
+
+func applyUserFilter(q *gorm.DB, filter user.UserFilter) *gorm.DB {
+	if filter.Status != "" {
+		q = q.Where("status = ?", filter.Status)
+	}
+	if filter.Search != "" {
+		like := "%" + filter.Search + "%"
+		q = q.Where("first_name LIKE ? OR last_name LIKE ? OR username LIKE ? OR email LIKE ?", like, like, like, like)
+	}
+	return q
 }

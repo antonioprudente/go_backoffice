@@ -112,7 +112,6 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 }
 
 func (c *UserController) GetUsers(ctx *gin.Context) {
-	// ottiene il targetRole dal middleware
 	roleVal, exists := ctx.Get("targetRole")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Ruolo non specificato nella richiesta"})
@@ -120,14 +119,19 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 	}
 	targetRole := roleVal.(string)
 
+	var filter user.UserFilter
+	if err := ctx.ShouldBindQuery(&filter); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Filtri non validi"})
+		return
+	}
+
 	actor, err := middlewares.ActorFromContext(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	var users []user.UserResponse
-	users, err = c.service.GetAllByRole(targetRole, actor)
+	users, err := c.service.GetAllByRole(targetRole, actor, filter)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante il recupero degli utenti"})
 		return

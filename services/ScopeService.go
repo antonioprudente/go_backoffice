@@ -2,13 +2,15 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
+
 	"example/go_backoffice/dto/pivot"
+	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/models"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
-	"fmt"
-	"reflect"
 )
 
 type ScopeService interface {
@@ -75,12 +77,16 @@ func (s *scopeService) AssignToOperator(request pivot.ArraysToOpRequest, actor p
 
 	// Activity Log - Aggiornamento Dati
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID: &actor.UserID,
-		//ActorRole:   enums.Role(actor.Role),
-		Action:      enums.Assignment,
-		TargetType:  reflect.TypeOf(&models.User{}).Elem().Name(), // Restituisce "User" in sicurezza
-		TargetID:    &response.OperatorId,
-		Description: fmt.Sprintf("Rete assegnata all'operatore %d (Agenti: %d, Agenzie: %d)", request.OperatorId, safeLen(response.AgentIds), safeLen(response.AgencyIds)),
+		ActorID:    &actor.UserID,
+		Action:     enums.Assignment,
+		TargetType: reflect.TypeOf(&models.User{}).Elem().Name(), // Restituisce "User" in sicurezza
+		TargetID:   &response.OperatorId,
+		Description: fmt.Sprintf(
+			"Rete assegnata all'operatore %d (Agenti: %d, Agenzie: %d)",
+			request.OperatorId,
+			safeLen(response.AgentIds),
+			safeLen(response.AgencyIds),
+		),
 	})
 
 	if err != nil {
@@ -99,7 +105,8 @@ func (s *scopeService) validateAgenciesBelongToAgents(agencyIds []uint, agentIds
 		return nil
 	}
 
-	agencies, err := s.userRepo.GetAllByRoleAndIDs(enums.RoleAgency.String(), agencyIds)
+	// Passato user.UserFilter{} in quanto per la validazione non si applicano filtri/ricerche
+	agencies, err := s.userRepo.GetAllByRoleAndIDs(enums.RoleAgency.String(), agencyIds, user.UserFilter{})
 	if err != nil {
 		return err
 	}

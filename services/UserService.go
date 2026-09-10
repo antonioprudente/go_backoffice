@@ -2,21 +2,22 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
+
 	"example/go_backoffice/dto/user"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/mappers"
 	"example/go_backoffice/models"
 	"example/go_backoffice/policies"
 	"example/go_backoffice/repositories"
-	"fmt"
-	"reflect"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type UserService interface {
-	GetAllByRole(role string, actor policies.AuthContext) ([]user.UserResponse, error)
+	GetAllByRole(role string, actor policies.AuthContext, filter user.UserFilter) ([]user.UserResponse, error)
 	GetUserByIDAndRole(id uint, targetRole string, actor policies.AuthContext) (*user.UserResponse, error)
 	CreateUser(request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
 	UpdateUser(id uint, request *user.UserRequest, actor policies.AuthContext) (*user.UserResponse, error)
@@ -54,83 +55,71 @@ func NewUserService(
 
 var ErrUnauthorized = errors.New("non hai i permessi per accedere a questa risorsa")
 
-func (s *userService) GetAllByRole(role string, actor policies.AuthContext) ([]user.UserResponse, error) {
-	list, err := s.scopedList(role, actor)
+func (s *userService) GetAllByRole(role string, actor policies.AuthContext, filter user.UserFilter) ([]user.UserResponse, error) {
+	list, err := s.scopedList(role, actor, filter)
 	if err != nil {
 		return nil, err
 	}
 	return mappers.ToUserResponses(list), nil
 }
 
-func (s *userService) scopedList(role string, actor policies.AuthContext) ([]models.User, error) {
+func (s *userService) scopedList(role string, actor policies.AuthContext, filter user.UserFilter) ([]models.User, error) {
 	switch actor.Role {
-
 	case enums.RoleAdmin.String():
-		return s.repo.GetAllByRole(role)
-
+		return s.repo.GetAllByRole(role, filter)
 	case enums.RoleOperator.String():
-		return s.scopedListForOperator(role, actor.UserID)
-
+		return s.scopedListForOperator(role, actor.UserID, filter)
 	case enums.RoleAgent.String():
-		return s.scopedListForAgent(role, actor.UserID)
-
+		return s.scopedListForAgent(role, actor.UserID, filter)
 	case enums.RoleAgency.String():
 		if role != enums.RoleUser.String() {
 			return nil, policies.ErrForbidden
 		}
-		return s.repo.GetAllByRoleAndForeignIDs(role, []uint{actor.UserID})
+		return s.repo.GetAllByRoleAndForeignIDs(role, []uint{actor.UserID}, filter)
 	}
-
 	return nil, policies.ErrUnknownRole
 }
 
-// scopedListForOperator usa le tabelle pivot agent_operator / agency_operator
-func (s *userService) scopedListForOperator(role string, operatorID uint) ([]models.User, error) {
+func (s *userService) scopedListForOperator(role string, operatorID uint, filter user.UserFilter) ([]models.User, error) {
 	switch role {
 	case enums.RoleAgent.String():
 		ids, err := s.scopeRepo.AssignedAgentIDs(operatorID)
 		if err != nil {
 			return nil, err
 		}
-		return s.repo.GetAllByRoleAndIDs(role, ids)
-
+		return s.repo.GetAllByRoleAndIDs(role, ids, filter)
 	case enums.RoleAgency.String():
 		ids, err := s.scopeRepo.AssignedAgencyIDs(operatorID)
 		if err != nil {
 			return nil, err
 		}
-		return s.repo.GetAllByRoleAndIDs(role, ids)
-
+		return s.repo.GetAllByRoleAndIDs(role, ids, filter)
 	case enums.RoleUser.String():
 		agencyIDs, err := s.scopeRepo.AssignedAgencyIDs(operatorID)
 		if err != nil {
 			return nil, err
 		}
-		return s.repo.GetAllByRoleAndForeignIDs(role, agencyIDs)
+		return s.repo.GetAllByRoleAndForeignIDs(role, agencyIDs, filter)
 	}
-
 	return nil, policies.ErrForbidden
 }
 
-// scopedListForAgent usa il nested set (agent_nodes): self + discendenti
-func (s *userService) scopedListForAgent(role string, agentID uint) ([]models.User, error) {
+func (s *userService) scopedListForAgent(role string, agentID uint, filter user.UserFilter) ([]models.User, error) {
 	scopeIDs, err := s.scopeRepo.NodeChildrenAndSelfAgentIds(agentID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return []models.User{}, nil // agente senza nodo -> nessun risultato, non un errore
+			return []models.User{}, nil
 		}
 		return nil, err
 	}
 
 	switch role {
 	case enums.RoleAgent.String():
-		return s.repo.GetAllByRoleAndIDs(role, scopeIDs)
-
+		return s.repo.GetAllByRoleAndIDs(role, scopeIDs, filter)
 	case enums.RoleAgency.String():
-		return s.repo.GetAllByRoleAndForeignIDs(role, scopeIDs)
-
+		return s.repo.GetAllByRoleAndForeignIDs(role, scopeIDs, filter)
 	case enums.RoleUser.String():
-		agencies, err := s.repo.GetAllByRoleAndForeignIDs(enums.RoleAgency.String(), scopeIDs)
+		agencies, err := s.repo.GetAllByRoleAndForeignIDs(enums.RoleAgency.String(), scopeIDs, user.UserFilter{})
 		if err != nil {
 			return nil, err
 		}
@@ -138,9 +127,8 @@ func (s *userService) scopedListForAgent(role string, agentID uint) ([]models.Us
 		for i, a := range agencies {
 			agencyIDs[i] = a.ID
 		}
-		return s.repo.GetAllByRoleAndForeignIDs(role, agencyIDs)
+		return s.repo.GetAllByRoleAndForeignIDs(role, agencyIDs, filter)
 	}
-
 	return nil, policies.ErrForbidden
 }
 
@@ -154,7 +142,8 @@ func (s *userService) GetUserByIDAndRole(id uint, targetRole string, actor polic
 		return nil, err
 	}
 
-	linkedUsers, err := s.repo.GetAllByForeignID(target.ID)
+	// Passaggio del filtro vuoto user.UserFilter{} in quanto per i collegati non si applica la ricerca/paginazione
+	linkedUsers, err := s.repo.GetAllByForeignID(target.ID, user.UserFilter{})
 	if err != nil {
 		return nil, err
 	}
@@ -283,8 +272,7 @@ func (s *userService) CreateUser(request *user.UserRequest, actor policies.AuthC
 
 	// Activity Log - Creazione Utente
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID: &actor.UserID,
-		//ActorRole:   enums.Role(actor.Role),
+		ActorID:     &actor.UserID,
 		Action:      enums.Create,
 		TargetType:  reflect.TypeOf(newUser).Elem().Name(),
 		TargetID:    &newUser.ID,
@@ -339,8 +327,7 @@ func (s *userService) UpdateUser(id uint, request *user.UserRequest, actor polic
 
 	// Activity Log - Aggiornamento Dati
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID: &actor.UserID,
-		//ActorRole:   enums.Role(actor.Role),
+		ActorID:     &actor.UserID,
 		Action:      enums.Update,
 		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &existing.ID,
@@ -384,8 +371,7 @@ func (s *userService) ChangeStatus(userID uint, targetRole string, status enums.
 
 	// Activity Log - Cambio Stato
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID: &actor.UserID,
-		//ActorRole:   enums.Role(actor.Role),
+		ActorID:     &actor.UserID,
 		Action:      action,
 		TargetType:  reflect.TypeOf(updated).Elem().Name(),
 		TargetID:    &updated.ID,
@@ -431,8 +417,7 @@ func (s *userService) ChangeForeignID(request user.ChangeForeignRequest, targetR
 
 	// Activity Log - Spostamento Relazionale
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID: &actor.UserID,
-		//ActorRole:   enums.Role(actor.Role),
+		ActorID:     &actor.UserID,
 		Action:      enums.Move,
 		TargetType:  reflect.TypeOf(updated).Elem().Name(),
 		TargetID:    &updated.ID,
@@ -462,8 +447,7 @@ func (s *userService) DeleteUserByIdAndRole(id uint, targetRole string, actor po
 
 	// Activity Log - Eliminazione
 	err = s.logService.NewLog(&models.ActivityLog{
-		ActorID: &actor.UserID,
-		//ActorRole:   enums.Role(actor.Role),
+		ActorID:     &actor.UserID,
 		Action:      enums.Delete,
 		TargetType:  reflect.TypeOf(existing).Elem().Name(),
 		TargetID:    &id,
