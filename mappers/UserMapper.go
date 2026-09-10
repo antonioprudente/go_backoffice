@@ -41,6 +41,8 @@ func ToUserResponse(u *models.User) user.UserResponse {
 		Role:      u.Role,
 		Status:    u.Status,
 		Email:     u.Email,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
 	}
 
 	if u.Foreign != nil {
