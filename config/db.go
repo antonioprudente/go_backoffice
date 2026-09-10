@@ -35,7 +35,9 @@ func ConnectDB() *gorm.DB {
 		user, password, host, port, dbName,
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		TranslateError: true, // abilita errors.Is(err, gorm.ErrDuplicatedKey) per il 409
+	})
 	if err != nil {
 		log.Fatalf("Errore durante la connessione al DB: %v", err)
 	}

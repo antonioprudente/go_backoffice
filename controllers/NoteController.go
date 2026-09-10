@@ -45,6 +45,10 @@ func (c *NoteController) AssignNote(ctx *gin.Context) {
 			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
 		}
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			ctx.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

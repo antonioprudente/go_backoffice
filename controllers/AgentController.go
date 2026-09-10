@@ -52,6 +52,14 @@ func (c *AgentController) CreateAgentNode(ctx *gin.Context) {
 
 	response, err := c.nodeService.CreateNode(&newUserRequest, actor)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, policies.ErrForbidden) {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
