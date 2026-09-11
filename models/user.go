@@ -11,8 +11,8 @@ type User struct {
 	FirstName string       `json:"first_name" gorm:"not null"`
 	LastName  string       `json:"last_name" gorm:"not null"`
 	Username  string       `json:"username" gorm:"unique;not null"`
-	Role      enums.Role   `json:"role" gorm:"type:enum('ADMIN', 'OPERATOR', 'AGENT', 'AGENCY', 'USER')"`
-	Status    enums.Status `json:"status" gorm:"type:enum('ACTIVE', 'SUSPENDED', 'BLOCKED', 'DEFAULT')"`
+	Role      enums.Role   `json:"role" gorm:"type:role;not null"`
+	Status    enums.Status `json:"status" gorm:"type:status;not null"`
 	Email     string       `json:"email" gorm:"unique;not null"`
 	Password  string       `json:"password" gorm:"not null"`
 	ForeignID *uint        `json:"foreign_id" gorm:"index"`

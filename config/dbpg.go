@@ -17,11 +17,11 @@ func ConnectPGDB() *gorm.DB {
 		log.Println("Nessun file .env trovato, uso le variabili d'ambiente di sistema")
 	}
 
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
+	user := os.Getenv("PG_DB_USER")
+	password := os.Getenv("PG_DB_PASSWORD")
+	host := os.Getenv("PG_DB_HOST")
+	port := os.Getenv("PG_DB_PORT")
+	dbName := os.Getenv("PG_DB_NAME")
 
 	// 1. Assicura la presenza del database usando una connessione al DB di default 'postgres'
 	if err := ensureDatabasePGExists(user, password, host, port, dbName); err != nil {
@@ -40,6 +40,10 @@ func ConnectPGDB() *gorm.DB {
 	if err != nil {
 		log.Fatalf("Errore durante la connessione al DB: %v", err)
 	}
+
+	db.Exec("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN CREATE TYPE role AS ENUM ('ADMIN', 'OPERATOR', 'AGENT', 'AGENCY', 'USER'); END IF; END $$;")
+	db.Exec("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'status') THEN CREATE TYPE status AS ENUM ('ACTIVE', 'SUSPENDED', 'BLOCKED', 'DEFAULT'); END IF; END $$;")
+	db.Exec("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'action') THEN CREATE TYPE action AS ENUM ('CREATE', 'UPDATE', 'DELETE', 'RESTORE', 'ASSIGNMENT', 'REMOVE', 'MOVE', 'ACTIVE', 'SUSPEND', 'BLOCK'); END IF; END $$;")
 
 	// 3. Creazione/Aggiornamento automatico delle tabelle
 	err = db.AutoMigrate(

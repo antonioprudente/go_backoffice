@@ -18,7 +18,7 @@ type ActivityLog struct {
 	Actor   *User `json:"actor,omitempty" gorm:"foreignKey:ActorID"`
 
 	// Tipo di azione compiuta
-	Action enums.Action `json:"action" gorm:"type:enum('CREATE', 'UPDATE', 'DELETE', 'RESTORE', 'ASSIGNMENT', 'REMOVE', 'MOVE', 'ACTIVE', 'SUSPEND', 'BLOCK')"`
+	Action enums.Action `json:"action" gorm:"type:action;not null"`
 
 	// Entità target su cui è stata eseguita l'azione (es. "User", "AgentNode",
 	// "AgentOperator"). Vuoto per azioni senza un target diretto (es. LOGIN)
