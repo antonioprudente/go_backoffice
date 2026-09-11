@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"example/go_backoffice/enums"
 	"example/go_backoffice/models"
@@ -25,11 +26,11 @@ func SeedAdminUser(db *gorm.DB) {
 		return
 	}
 
-	email := GetEnv("ADMIN_EMAIL", "admin@example.com")
-	username := GetEnv("ADMIN_USERNAME", "admin")
-	password := GetEnv("ADMIN_PASSWORD", "admin123")
-	firstName := GetEnv("ADMIN_FIRST_NAME", "Super")
-	lastName := GetEnv("ADMIN_LAST_NAME", "Admin")
+	email := os.Getenv("ADMIN_EMAIL")
+	username := os.Getenv("ADMIN_USERNAME")
+	password := os.Getenv("ADMIN_PASSWORD")
+	firstName := os.Getenv("ADMIN_FIRST_NAME")
+	lastName := os.Getenv("ADMIN_LAST_NAME")
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

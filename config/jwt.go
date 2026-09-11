@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -15,7 +16,7 @@ type Claims struct {
 }
 
 func jwtSecret() []byte {
-	secret := GetEnv("JWT_SECRET", "dev-secret-cambiami") // in produzione DEVE arrivare da env
+	secret := os.Getenv("JWT_SECRET") // in produzione DEVE arrivare da env
 	return []byte(secret)
 }
 

@@ -1,7 +1,9 @@
 package repositories
 
 import (
+	"example/go_backoffice/dto/note"
 	"example/go_backoffice/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -10,8 +12,8 @@ type NoteRepo interface {
 	WithTx(tx *gorm.DB) NoteRepo
 	NewNote(note models.Note) (*models.Note, error)
 	GetByID(id uint) (*models.Note, error)
-	GetAll() ([]*models.Note, error)
-	GetAllByActorID(actorID uint) ([]*models.Note, error)
+	GetAll(filter note.NoteFilter) ([]*models.Note, error)
+	GetAllByActorID(actorID uint, filter note.NoteFilter) ([]*models.Note, error)
 	Update(note *models.Note) error
 	Delete(id uint) (bool, error)
 }
@@ -46,30 +48,65 @@ func (r *noteRepo) GetByID(id uint) (*models.Note, error) {
 	return &note, nil
 }
 
-func (r *noteRepo) GetAll() ([]*models.Note, error) {
+func (r *noteRepo) GetAll(filter note.NoteFilter) ([]*models.Note, error) {
 	var notes []*models.Note
-	err := r.db.
-		Order("created_at desc").
+
+	q := r.db.Model(&models.Note{}).
+		Order("notes.created_at desc").
 		Preload("Actor").
-		Preload("Target").
-		Find(&notes).Error
-	if err != nil {
+		Preload("Target")
+
+	q = applyNoteFilter(q, filter)
+
+	if err := q.Find(&notes).Error; err != nil {
 		return nil, err
 	}
 	return notes, nil
 }
 
-func (r *noteRepo) GetAllByActorID(actorID uint) ([]*models.Note, error) {
+func (r *noteRepo) GetAllByActorID(actorID uint, filter note.NoteFilter) ([]*models.Note, error) {
 	var notes []*models.Note
-	err := r.db.
+
+	q := r.db.Model(&models.Note{}).
+		Where("notes.actor_id = ?", actorID).
+		Order("notes.created_at desc").
 		Preload("Actor").
-		Preload("Target").
-		Where("actor_id = ?", actorID).
-		Find(&notes).Error
-	if err != nil {
+		Preload("Target")
+
+	q = applyNoteFilter(q, filter)
+
+	if err := q.Find(&notes).Error; err != nil {
 		return nil, err
 	}
 	return notes, nil
+}
+
+func applyNoteFilter(q *gorm.DB, filter note.NoteFilter) *gorm.DB {
+
+	if filter.CreateFrom != nil {
+		from := time.Date(
+			filter.CreateFrom.Year(), filter.CreateFrom.Month(), filter.CreateFrom.Day(),
+			0, 0, 0, 0, filter.CreateFrom.Location(),
+		)
+		q = q.Where("notes.created_at >= ?", from)
+
+		if filter.CreateTo != nil {
+			to := time.Date(
+				filter.CreateTo.Year(), filter.CreateTo.Month(), filter.CreateTo.Day(),
+				0, 0, 0, 0, filter.CreateTo.Location(),
+			).AddDate(0, 0, 1)
+			q = q.Where("notes.created_at < ?", to)
+		}
+	}
+
+	if filter.Search != "" {
+		like := "%" + filter.Search + "%"
+		q = q.Joins("LEFT JOIN users AS actor ON actor.id = notes.actor_id").
+			Joins("LEFT JOIN users AS target ON target.id = notes.target_id").
+			Where("actor.username LIKE ? OR notes.content LIKE ? OR target.username LIKE ?", like, like, like)
+	}
+
+	return q
 }
 
 func (r *noteRepo) Update(note *models.Note) error {

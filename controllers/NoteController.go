@@ -62,7 +62,13 @@ func (c *NoteController) GetAllNotes(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.service.GetAllNotes(actor)
+	var filter note.NoteFilter
+	if err := ctx.ShouldBindQuery(&filter); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Filtri non validi"})
+		return
+	}
+
+	response, err := c.service.GetAllNotes(actor, filter)
 	if err != nil {
 		if errors.Is(err, policies.ErrForbidden) {
 			ctx.JSON(http.StatusForbidden, gin.H{"error": err.Error()})

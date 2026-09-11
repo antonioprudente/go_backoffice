@@ -1,8 +1,6 @@
 # === Credenziali e Variabili d'Ambiente ===
 # Non versionare mai il file .env reale con secrets e credenziali
-.env
-.env.*
-!.env.example
+
 
 # === Binari ed Eseguibili Compilati ===
 # Ignora gli eseguibili prodotti da `go build`

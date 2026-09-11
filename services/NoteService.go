@@ -16,7 +16,7 @@ import (
 type NoteService interface {
 	AssignNote(req *note.NoteRequest, actor policies.AuthContext) (*note.NoteResponse, error)
 	GetNoteByID(id uint, actor policies.AuthContext) (*note.NoteResponse, error)
-	GetAllNotes(actor policies.AuthContext) ([]*note.NoteResponse, error)
+	GetAllNotes(actor policies.AuthContext, filter note.NoteFilter) ([]*note.NoteResponse, error)
 	UpdateNote(id uint, req *note.NoteRequest, actor policies.AuthContext) (*note.NoteResponse, error)
 	DeleteNote(id uint, actor policies.AuthContext) error
 }
@@ -94,14 +94,14 @@ func (s *noteService) GetNoteByID(id uint, actor policies.AuthContext) (*note.No
 	return response, nil
 }
 
-func (s *noteService) GetAllNotes(actor policies.AuthContext) ([]*note.NoteResponse, error) {
+func (s *noteService) GetAllNotes(actor policies.AuthContext, filter note.NoteFilter) ([]*note.NoteResponse, error) {
 	var notes []*models.Note
 	var err error
 
 	if actor.Role == enums.RoleAdmin.String() {
-		notes, err = s.repo.GetAll()
+		notes, err = s.repo.GetAll(filter)
 	} else {
-		notes, err = s.repo.GetAllByActorID(actor.UserID)
+		notes, err = s.repo.GetAllByActorID(actor.UserID, filter)
 	}
 
 	if err != nil {
