@@ -4,6 +4,7 @@ import (
 	"example/go_backoffice/config"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/middlewares"
+	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -155,5 +156,15 @@ func main() {
 		notes.DELETE("/:id", noteController.DeleteNote) // DELETE /notes/:id
 	}
 
-	router.Run(os.Getenv("PG_DB_HOST"))
+	port := os.Getenv("PG_DB_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	addr := "0.0.0.0:" + port
+	log.Printf("Server in ascolto su %s", addr)
+
+	if err := router.Run(addr); err != nil {
+		log.Fatalf("Errore durante l'avvio del server: %v", err)
+	}
 }
