@@ -30,7 +30,7 @@ func ConnectPGDB() *gorm.DB {
 
 	// 2. DSN corretto per driver postgres
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Europe/Rome",
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=require TimeZone=Europe/Rome",
 		host, user, password, dbName, port,
 	)
 
@@ -66,7 +66,7 @@ func ConnectPGDB() *gorm.DB {
 func ensureDatabasePGExists(user, password, host, port, dbName string) error {
 	// Connessione al database amministrativo 'postgres'
 	systemDSN := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=postgres port=%s sslmode=disable",
+		"host=%s user=%s password=%s dbname=postgres port=%s sslmode=require",
 		host, user, password, port,
 	)
 
