@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"gorm.io/driver/mysql" // Cambia con gorm.io/driver/postgres se usi PostgreSQL
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -36,7 +36,7 @@ func ConnectDB() *gorm.DB {
 	)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		TranslateError: true, // abilita errors.Is(err, gorm.ErrDuplicatedKey) per il 409
+		TranslateError: true,
 	})
 	if err != nil {
 		log.Fatalf("Errore durante la connessione al DB: %v", err)

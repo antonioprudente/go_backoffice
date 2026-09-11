@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// Inizializzazione DB
-	db := config.ConnectDB()
+	db := config.ConnectPGDB()
 
 	// Crea l'utente ADMIN di default se non esiste già
 	config.SeedAdminUser(db)
