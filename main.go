@@ -4,6 +4,7 @@ import (
 	"example/go_backoffice/config"
 	"example/go_backoffice/enums"
 	"example/go_backoffice/middlewares"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -154,5 +155,5 @@ func main() {
 		notes.DELETE("/:id", noteController.DeleteNote) // DELETE /notes/:id
 	}
 
-	router.Run("localhost:9090")
+	router.Run(os.Getenv("PG_DB_HOST"))
 }
